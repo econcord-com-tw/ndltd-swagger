@@ -7,7 +7,7 @@ info:
     name: Github 原始碼
     url: https://github.com/chouhsiang/thesis-swagger
 servers:
-  - url: https://ndltd.ncl.edu.tw/api/v1
+  - url: https://ndltdsch.ncl.edu.tw/api/v1/{school}/thesis
     description: 正式環境
 
 
