@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: 論文系統架構說明（右上角「選擇系統」查看各系統API）
+  title: 論文系統架構說明
   description: |
 
     

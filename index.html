@@ -17,7 +17,7 @@
 
       SwaggerUIBundle({
         urls: [
-          { url: "readme.yaml?v=" + ts, name: "選擇系統" },
+          { url: "readme.yaml?v=" + ts, name: "首頁" },
           { url: "ndltd/reader.yaml?v=" + ts, name: "博碩士論文系統 讀者端" },
           { url: "ndltd/admin.yaml?v=" + ts, name: "博碩士論文系統 國圖端" },
           { url: "ndltd/api.yaml?v=" + ts, name: "博碩士論文系統 對外API介接服務" },
@@ -30,6 +30,25 @@
         presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
         layout: "StandaloneLayout",
       });
+
+      const observer = new MutationObserver(() => {
+        const logo = document.querySelector('.topbar-wrapper a.link');
+        if (logo) {
+          logo.innerText = "博碩士論文系統 API";
+          logo.href = "./";
+          observer.disconnect();
+        }
+        const labelSpan = document.querySelector('.select-label span');
+        if (labelSpan && labelSpan.innerText === "Select a definition") {
+          labelSpan.innerText = "選擇系統";
+        }
+
+        if (logo && labelSpan) {
+          observer.disconnect(); // 都改完就停止監聽
+        }
+      });
+      observer.observe(document.querySelector('#swagger-ui'), { childList: true, subtree: true });
+
     };
   </script>
 </body>
