@@ -735,23 +735,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
 
-  /permissions:
-    get:
-      tags: [人員管理]
-      summary: 取得可用權限清單
-      description: 回傳系統中所有可分配的權限項目，供前端動態載入
-      responses:
-        '200':
-          description: 成功取得權限清單
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PermissionListResponse'
+ 
 
   # 系統設定 API (來自 settings.yaml)
   /thesissettings:
     get:
-      tags: [系統設定]
+      tags: [論文設定]
       summary: 取得學校論文設定
       description: 取得學校的論文上傳與授權設定
       responses:
@@ -763,7 +752,7 @@ paths:
                 $ref: '#/components/schemas/ThesisSettingResponse'
     
     post:
-      tags: [系統設定]
+      tags: [論文設定]
       summary: 建立或更新學校論文設定
       description: 若該學校已存在設定，會覆蓋舊設定
       requestBody:

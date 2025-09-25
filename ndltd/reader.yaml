@@ -638,7 +638,7 @@ paths:
                         example: ["thesis999"]
 
   # 排行榜 API
-  /ranking/schools:
+  /rankings:
     get:
       tags: [排行榜]
       summary: 取得學校熱門排行榜

@@ -1794,105 +1794,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /apisettings/{id}/approve:
-    post:
-      tags: [API設定管理]
-      summary: 核准 API 申請
-      description: 核准指定的 API 申請並生成金鑰
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            example: "api001"
-          description: API 設定唯一識別碼
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                approval_note:
-                  type: string
-                  description: 核准備註
-                  example: "申請資料完整，核准使用"
-                rate_limit:
-                  type: integer
-                  description: 每日請求限制
-                  example: 1000
-                expires_at:
-                  type: string
-                  format: date-time
-                  description: 金鑰過期時間
-                  example: "2025-12-31T23:59:59Z"
-      responses:
-        '200':
-          description: 成功核准 API 申請
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiSettingResponse'
-
-  /apisettings/{id}/reject:
-    post:
-      tags: [API設定管理]
-      summary: 拒絕 API 申請
-      description: 拒絕指定的 API 申請
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            example: "api001"
-          description: API 設定唯一識別碼
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [rejection_reason]
-              properties:
-                rejection_reason:
-                  type: string
-                  description: 拒絕原因
-                  example: "申請資料不完整，請補充相關文件"
-      responses:
-        '200':
-          description: 成功拒絕 API 申請
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiSettingResponse'
-
-  /apisettings/{id}/regenerate-key:
-    post:
-      tags: [API設定管理]
-      summary: 重新生成 API 金鑰
-      description: 為指定的 API 設定重新生成金鑰
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            example: "api001"
-          description: API 設定唯一識別碼
-      responses:
-        '200':
-          description: 成功重新生成 API 金鑰
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiSettingResponse'
-
-  /apisettings/statistics:
+ 
+  /statistics:
     get:
-      tags: [API設定管理]
-      summary: 取得 API 使用統計
+      tags: [靜態資料]
+      summary: 取得論文統計資料
       description: 取得 API 金鑰的使用統計資料
       parameters:
         - name: api_key_id

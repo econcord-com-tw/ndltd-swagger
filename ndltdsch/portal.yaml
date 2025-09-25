@@ -78,7 +78,7 @@ paths:
 
   /auth/login/callback:
     post:
-      tags: [認證]
+      tags: [驗證]
       summary: OAuth 登入回調
       description: 處理 OAuth 認證回調，完成使用者登入流程
       security: []  # 此端點不需要認證
@@ -193,7 +193,7 @@ paths:
 
   /auth/logout:
     post:
-      tags: [認證]
+      tags: [驗證]
       summary: 使用者登出
       description: 登出目前使用者，使 JWT 權杖失效
       responses:
@@ -254,7 +254,7 @@ paths:
   # 個人資料 API (來自 me.yaml)
   /auth/me:
     get:
-      tags: [個人資料]
+      tags: [驗證]
       summary: 取得個人資訊
       description: 顯示目前登入使用者的基本資料
       responses:
