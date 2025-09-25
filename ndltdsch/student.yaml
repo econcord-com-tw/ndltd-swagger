@@ -13,35 +13,7 @@ servers:
 
 paths:
   # 個人資料管理 API
-  /auth/me:
-    get:
-      tags: [個人資料]
-      summary: 取得個人資訊
-      description: 回傳使用者的個人資訊，包含姓名、信箱、學校、科系、階段與論文最後提交時間
-      responses:
-        '200':
-          description: 成功回傳個人資訊
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  errors:
-                    type: array
-                    items:
-                      type: object
-                    example: []
-                  messages:
-                    type: array
-                    items:
-                      type: object
-                    example: []
-                  result:
-                    $ref: '#/components/schemas/User'
-
+ 
   # 論文上傳管理 API
   /thesis/uploadFile:
     post:

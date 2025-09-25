@@ -76,6 +76,212 @@ paths:
               schema:
                 $ref: '#/components/schemas/AnnouncementDetailResponse'
 
+  /auth/login/callback:
+    post:
+      tags: [認證]
+      summary: OAuth 登入回調
+      description: 處理 OAuth 認證回調，完成使用者登入流程
+      security: []  # 此端點不需要認證
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, state]
+              properties:
+                code:
+                  type: string
+                  description: OAuth 授權碼
+                  example: "abc123def456"
+                state:
+                  type: string
+                  description: 狀態參數，用於防止 CSRF 攻擊
+                  example: "random_state_string"
+                redirect_uri:
+                  type: string
+                  description: 重定向 URI
+                  example: "https://ndltdsch.ncl.edu.tw/auth/callback"
+      responses:
+        '200':
+          description: 登入成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  result:
+                    type: object
+                    properties:
+                      access_token:
+                        type: string
+                        description: JWT 存取權杖
+                        example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      refresh_token:
+                        type: string
+                        description: 刷新權杖
+                        example: "refresh_token_string"
+                      expires_in:
+                        type: integer
+                        description: 權杖有效期（秒）
+                        example: 3600
+                      token_type:
+                        type: string
+                        description: 權杖類型
+                        example: "Bearer"
+                      user:
+                        $ref: '#/components/schemas/UserProfile'
+        '400':
+          description: 登入失敗 - 無效的授權碼或參數
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                    example: [{"code": "invalid_grant", "message": "無效的授權碼"}]
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  result:
+                    type: object
+                    example: null
+        '401':
+          description: 認證失敗 - 使用者未授權
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                    example: [{"code": "unauthorized", "message": "使用者未授權或權限不足"}]
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  result:
+                    type: object
+                    example: null
+
+  /auth/logout:
+    post:
+      tags: [認證]
+      summary: 使用者登出
+      description: 登出目前使用者，使 JWT 權杖失效
+      responses:
+        '200':
+          description: 登出成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                    example: [{"message": "已成功登出"}]
+                  result:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                        example: "登出成功"
+                      logged_out_at:
+                        type: string
+                        format: date-time
+                        example: "2024-09-24T16:36:00Z"
+        '401':
+          description: 未認證 - 無效的權杖
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                    example: [{"code": "invalid_token", "message": "無效的權杖"}]
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  result:
+                    type: object
+                    example: null
+
+  # 個人資料 API (來自 me.yaml)
+  /auth/me:
+    get:
+      tags: [個人資料]
+      summary: 取得個人資訊
+      description: 顯示目前登入使用者的基本資料
+      responses:
+        '200':
+          description: 成功取得個人資訊
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  result:
+                    $ref: '#/components/schemas/UserProfile'
+
+
 components:
   schemas:
     # 公告相關 Schema
@@ -150,6 +356,37 @@ components:
               type: string
               description: 完整公告內容
               example: "系統將於 2024-01-15 進行維護，維護期間系統將暫停服務..."
+
+    # 使用者資料 Schema
+    UserProfile:
+      type: object
+      properties:
+        name:
+          type: string
+          description: 使用者姓名
+          example: "王小明"
+        email:
+          type: string
+          format: email
+          description: 電子郵件
+          example: "wang.xiaoming@example.edu.tw"
+        school:
+          type: string
+          description: 學校名稱
+          example: "國立台灣大學"
+        college:
+          type: string
+          description: 學院名稱
+          example: "工學院"
+        department:
+          type: string
+          description: 系所名稱
+          example: "資訊工程學系"
+        identity:
+          type: string
+          description: 身份類別
+          enum: [學生, 教職員]
+          example: "學生"
 
     # 分頁資訊 Schema
     PaginationInfo:
