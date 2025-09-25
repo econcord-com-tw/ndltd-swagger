@@ -15,6 +15,65 @@ security:
   - bearerAuth: []
 
 paths:
+  # 認證相關 API
+  /auth/login:
+    post:
+      tags: [認證]
+      summary: 使用者登入
+      description: 國圖管理員登入系統
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: 登入成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: 登入失敗
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/logout:
+    post:
+      tags: [認證]
+      summary: 使用者登出
+      description: 國圖管理員登出系統
+      responses:
+        '200':
+          description: 登出成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /auth/me:
+    get:
+      tags: [認證]
+      summary: 取得當前使用者資訊
+      description: 取得目前登入的國圖管理員資訊
+      responses:
+        '200':
+          description: 成功取得使用者資訊
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfileResponse'
+        '401':
+          description: 未授權或令牌無效
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   # 公告管理 API
   /announcements:
     get:
@@ -445,6 +504,1425 @@ paths:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
 
+  # 論文管理 API
+  /theses:
+    get:
+      tags: [論文管理]
+      summary: 取得論文清單
+      description: 取得所有論文的管理清單，支援多種篩選條件
+      parameters:
+        - name: page
+          in: query
+          description: 分頁頁碼
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: 每頁筆數
+          schema:
+            type: integer
+            default: 20
+        - name: keyword
+          in: query
+          description: 關鍵字搜尋（標題、作者、摘要）
+          schema:
+            type: string
+            example: "Open Access"
+        - name: school
+          in: query
+          description: 學校名稱篩選
+          schema:
+            type: string
+            example: "國立臺灣大學"
+        - name: author
+          in: query
+          description: 作者篩選
+          schema:
+            type: string
+            example: "王小明"
+        - name: degree
+          in: query
+          description: 學位篩選
+          schema:
+            type: string
+            enum: [碩士, 博士, 其他]
+        - name: year
+          in: query
+          description: 年度篩選
+          schema:
+            type: integer
+            example: 113
+        - name: status
+          in: query
+          description: 論文狀態篩選
+          schema:
+            type: string
+            enum: [審核中, 已通過, 已拒絕, 已發布]
+      responses:
+        '200':
+          description: 成功取得論文清單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThesisListResponse'
+    
+    post:
+      tags: [論文管理]
+      summary: 新增論文
+      description: 建立一筆新的論文記錄
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ThesisCreate'
+      responses:
+        '201':
+          description: 成功新增論文
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThesisResponse'
+
+  /theses/{id}:
+    get:
+      tags: [論文管理]
+      summary: 取得單篇論文詳細內容
+      description: 依論文 ID 取得詳細內容
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "1"
+          description: 論文唯一識別碼
+      responses:
+        '200':
+          description: 成功取得論文內容
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThesisResponse'
+        '404':
+          description: 找不到指定的論文
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      tags: [論文管理]
+      summary: 更新論文資訊
+      description: 更新指定 ID 的論文完整資訊
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "1"
+          description: 論文唯一識別碼
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ThesisUpdate'
+      responses:
+        '200':
+          description: 成功更新論文
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThesisResponse'
+        '404':
+          description: 找不到指定的論文
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    delete:
+      tags: [論文管理]
+      summary: 刪除論文
+      description: 刪除指定 ID 的論文記錄
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "1"
+          description: 論文唯一識別碼
+      responses:
+        '200':
+          description: 成功刪除論文
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到指定的論文
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /theses/search:
+    get:
+      tags: [論文管理]
+      summary: 搜尋論文
+      description: 依多種條件進階搜尋論文
+      parameters:
+        - name: keyword
+          in: query
+          description: 關鍵字（標題、摘要、關鍵字等模糊搜尋）
+          schema:
+            type: string
+            example: "Open Access"
+        - name: school
+          in: query
+          description: 學校名稱
+          schema:
+            type: string
+            example: "國立臺灣大學"
+        - name: author
+          in: query
+          description: 作者
+          schema:
+            type: string
+            example: "王小明"
+        - name: degree
+          in: query
+          description: 學位（碩士/博士/其他）
+          schema:
+            type: string
+            enum: [碩士, 博士, 其他]
+        - name: year
+          in: query
+          description: 年度
+          schema:
+            type: integer
+            example: 113
+        - name: sort
+          in: query
+          description: 排序方式
+          schema:
+            type: string
+            enum: [created_at, updated_at, year, title]
+            default: created_at
+        - name: limit
+          in: query
+          description: 限制回傳最大筆數（預設 20，最大 100）
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+      responses:
+        '200':
+          description: 成功取得搜尋結果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThesisSearchResponse'
+
+  # 問題回報管理 API
+  /issues:
+    get:
+      tags: [問題回報管理]
+      summary: 取得問題回報清單
+      description: 取得所有問題回報的管理清單
+      parameters:
+        - name: page
+          in: query
+          description: 分頁頁碼
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: 每頁筆數
+          schema:
+            type: integer
+            default: 20
+        - name: source
+          in: query
+          description: 問題來源篩選
+          schema:
+            type: string
+            enum: [學生, 學校]
+        - name: category
+          in: query
+          description: 問題分類篩選
+          schema:
+            type: string
+            enum: [系統問題, 操作問題, 帳號問題, 論文問題, 其他]
+        - name: status
+          in: query
+          description: 問題狀態篩選
+          schema:
+            type: string
+            enum: [待處理, 處理中, 已解決, 已關閉]
+        - name: priority
+          in: query
+          description: 優先級篩選
+          schema:
+            type: string
+            enum: [低, 中, 高, 緊急]
+        - name: keyword
+          in: query
+          description: 關鍵字搜尋（問題內容）
+          schema:
+            type: string
+            example: "上傳"
+      responses:
+        '200':
+          description: 成功取得問題回報清單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueListResponse'
+    
+    post:
+      tags: [問題回報管理]
+      summary: 新增問題回報
+      description: 管理員代為建立問題回報
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueCreate'
+      responses:
+        '201':
+          description: 成功新增問題回報
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueResponse'
+
+  /issues/{id}:
+    get:
+      tags: [問題回報管理]
+      summary: 取得單一問題回報
+      description: 取得指定 ID 的問題回報詳細資訊
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "ISS-20250925-001"
+          description: 問題回報唯一識別碼
+      responses:
+        '200':
+          description: 成功取得問題回報
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueResponse'
+        '404':
+          description: 找不到指定的問題回報
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      tags: [問題回報管理]
+      summary: 更新問題回報
+      description: 更新指定 ID 的問題回報資訊
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "ISS-20250925-001"
+          description: 問題回報唯一識別碼
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueUpdate'
+      responses:
+        '200':
+          description: 成功更新問題回報
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueResponse'
+        '404':
+          description: 找不到指定的問題回報
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    delete:
+      tags: [問題回報管理]
+      summary: 刪除問題回報
+      description: 刪除指定 ID 的問題回報
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "ISS-20250925-001"
+          description: 問題回報唯一識別碼
+      responses:
+        '200':
+          description: 成功刪除問題回報
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到指定的問題回報
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # 學校管理 API
+  /schools:
+    get:
+      tags: [學校管理]
+      summary: 取得學校清單
+      description: 取得所有學校的管理清單
+      parameters:
+        - name: page
+          in: query
+          description: 分頁頁碼
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: 每頁筆數
+          schema:
+            type: integer
+            default: 20
+        - name: type
+          in: query
+          description: 學校類型篩選
+          schema:
+            type: string
+            enum: [國立, 私立, 技職, 其他]
+        - name: region
+          in: query
+          description: 地區篩選
+          schema:
+            type: string
+            example: "台北市"
+        - name: keyword
+          in: query
+          description: 關鍵字搜尋（學校名稱）
+          schema:
+            type: string
+            example: "台灣大學"
+        - name: status
+          in: query
+          description: 學校狀態篩選
+          schema:
+            type: string
+            enum: [啟用, 停用, 暫停]
+      responses:
+        '200':
+          description: 成功取得學校清單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolListResponse'
+    
+    post:
+      tags: [學校管理]
+      summary: 新增學校
+      description: 建立一個新的學校記錄
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SchoolCreate'
+      responses:
+        '201':
+          description: 成功新增學校
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolResponse'
+
+  /schools/{id}:
+    get:
+      tags: [學校管理]
+      summary: 取得單一學校資訊
+      description: 取得指定 ID 的學校詳細資訊
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "school001"
+          description: 學校唯一識別碼
+      responses:
+        '200':
+          description: 成功取得學校資訊
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolResponse'
+        '404':
+          description: 找不到指定的學校
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      tags: [學校管理]
+      summary: 更新學校資訊
+      description: 更新指定 ID 的學校資訊
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "school001"
+          description: 學校唯一識別碼
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SchoolUpdate'
+      responses:
+        '200':
+          description: 成功更新學校資訊
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolResponse'
+        '404':
+          description: 找不到指定的學校
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    delete:
+      tags: [學校管理]
+      summary: 刪除學校
+      description: 刪除指定 ID 的學校記錄
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "school001"
+          description: 學校唯一識別碼
+      responses:
+        '200':
+          description: 成功刪除學校
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到指定的學校
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # 科系管理 API
+  /departments:
+    get:
+      tags: [科系管理]
+      summary: 取得科系清單
+      description: 取得所有科系的管理清單
+      parameters:
+        - name: page
+          in: query
+          description: 分頁頁碼
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: 每頁筆數
+          schema:
+            type: integer
+            default: 20
+        - name: school_id
+          in: query
+          description: 依學校篩選
+          schema:
+            type: string
+            example: "school001"
+        - name: college
+          in: query
+          description: 依學院篩選
+          schema:
+            type: string
+            example: "工學院"
+        - name: keyword
+          in: query
+          description: 關鍵字搜尋（科系名稱）
+          schema:
+            type: string
+            example: "資訊工程"
+        - name: status
+          in: query
+          description: 科系狀態篩選
+          schema:
+            type: string
+            enum: [啟用, 停用, 暫停]
+      responses:
+        '200':
+          description: 成功取得科系清單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepartmentListResponse'
+    
+    post:
+      tags: [科系管理]
+      summary: 新增科系
+      description: 建立一個新的科系記錄
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentCreate'
+      responses:
+        '201':
+          description: 成功新增科系
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepartmentResponse'
+
+  /departments/{id}:
+    get:
+      tags: [科系管理]
+      summary: 取得單一科系資訊
+      description: 取得指定 ID 的科系詳細資訊
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "dept001"
+          description: 科系唯一識別碼
+      responses:
+        '200':
+          description: 成功取得科系資訊
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepartmentResponse'
+        '404':
+          description: 找不到指定的科系
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      tags: [科系管理]
+      summary: 更新科系資訊
+      description: 更新指定 ID 的科系資訊
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "dept001"
+          description: 科系唯一識別碼
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentUpdate'
+      responses:
+        '200':
+          description: 成功更新科系資訊
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepartmentResponse'
+        '404':
+          description: 找不到指定的科系
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    delete:
+      tags: [科系管理]
+      summary: 刪除科系
+      description: 刪除指定 ID 的科系記錄
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "dept001"
+          description: 科系唯一識別碼
+      responses:
+        '200':
+          description: 成功刪除科系
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到指定的科系
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # 常見問答管理 API
+  /faqs:
+    get:
+      tags: [常見問答管理]
+      summary: 取得常見問答清單
+      description: 取得所有常見問答的管理清單
+      parameters:
+        - name: page
+          in: query
+          description: 分頁頁碼
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: 每頁筆數
+          schema:
+            type: integer
+            default: 20
+        - name: category
+          in: query
+          description: 問答分類篩選
+          schema:
+            type: string
+            enum: [系統使用, 論文上傳, 帳號問題, 技術支援, 其他]
+        - name: status
+          in: query
+          description: 問答狀態篩選
+          schema:
+            type: string
+            enum: [啟用, 停用, 草稿]
+        - name: keyword
+          in: query
+          description: 關鍵字搜尋（問題或答案）
+          schema:
+            type: string
+            example: "上傳"
+      responses:
+        '200':
+          description: 成功取得常見問答清單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FaqListResponse'
+    
+    post:
+      tags: [常見問答管理]
+      summary: 新增常見問答
+      description: 建立一個新的常見問答
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FaqCreate'
+      responses:
+        '201':
+          description: 成功新增常見問答
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FaqResponse'
+
+  /faqs/{id}:
+    get:
+      tags: [常見問答管理]
+      summary: 取得單一常見問答
+      description: 取得指定 ID 的常見問答詳細資訊
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "faq001"
+          description: 常見問答唯一識別碼
+      responses:
+        '200':
+          description: 成功取得常見問答
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FaqResponse'
+        '404':
+          description: 找不到指定的常見問答
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      tags: [常見問答管理]
+      summary: 更新常見問答
+      description: 更新指定 ID 的常見問答資訊
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "faq001"
+          description: 常見問答唯一識別碼
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FaqUpdate'
+      responses:
+        '200':
+          description: 成功更新常見問答
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FaqResponse'
+        '404':
+          description: 找不到指定的常見問答
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    delete:
+      tags: [常見問答管理]
+      summary: 刪除常見問答
+      description: 刪除指定 ID 的常見問答
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "faq001"
+          description: 常見問答唯一識別碼
+      responses:
+        '200':
+          description: 成功刪除常見問答
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到指定的常見問答
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # 內容管理 API
+  /contents:
+    get:
+      tags: [內容管理]
+      summary: 取得內容清單
+      description: 取得所有內容文章的管理清單
+      parameters:
+        - name: page
+          in: query
+          description: 分頁頁碼
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: 每頁筆數
+          schema:
+            type: integer
+            default: 20
+        - name: type
+          in: query
+          description: 內容類型篩選
+          schema:
+            type: string
+            enum: [公告, 新聞, 使用說明, 政策文件, 其他]
+        - name: status
+          in: query
+          description: 內容狀態篩選
+          schema:
+            type: string
+            enum: [草稿, 已發布, 已下架]
+        - name: language
+          in: query
+          description: 語言篩選
+          schema:
+            type: string
+            enum: [中文, 英文, 雙語]
+        - name: keyword
+          in: query
+          description: 關鍵字搜尋（標題或內容）
+          schema:
+            type: string
+            example: "使用指南"
+      responses:
+        '200':
+          description: 成功取得內容清單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentListResponse'
+    
+    post:
+      tags: [內容管理]
+      summary: 新增內容
+      description: 建立一個新的內容文章
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentCreate'
+      responses:
+        '201':
+          description: 成功新增內容
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentResponse'
+
+  /contents/{id}:
+    get:
+      tags: [內容管理]
+      summary: 取得單一內容
+      description: 取得指定 ID 的內容詳細資訊
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "content001"
+          description: 內容唯一識別碼
+      responses:
+        '200':
+          description: 成功取得內容
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentResponse'
+        '404':
+          description: 找不到指定的內容
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      tags: [內容管理]
+      summary: 更新內容
+      description: 更新指定 ID 的內容資訊
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "content001"
+          description: 內容唯一識別碼
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentUpdate'
+      responses:
+        '200':
+          description: 成功更新內容
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContentResponse'
+        '404':
+          description: 找不到指定的內容
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    delete:
+      tags: [內容管理]
+      summary: 刪除內容
+      description: 刪除指定 ID 的內容
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "content001"
+          description: 內容唯一識別碼
+      responses:
+        '200':
+          description: 成功刪除內容
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到指定的內容
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # 系統設定管理 API
+  /systemsettings:
+    get:
+      tags: [系統設定管理]
+      summary: 取得系統設定清單
+      description: 取得所有系統設定的管理清單
+      parameters:
+        - name: page
+          in: query
+          description: 分頁頁碼
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: 每頁筆數
+          schema:
+            type: integer
+            default: 20
+        - name: category
+          in: query
+          description: 設定分類篩選
+          schema:
+            type: string
+            enum: [系統配置, 功能開關, 限制設定, 顯示設定, 其他]
+        - name: keyword
+          in: query
+          description: 關鍵字搜尋（設定鍵或描述）
+          schema:
+            type: string
+            example: "upload"
+      responses:
+        '200':
+          description: 成功取得系統設定清單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettingListResponse'
+    
+    post:
+      tags: [系統設定管理]
+      summary: 新增系統設定
+      description: 建立一個新的系統設定
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemSettingCreate'
+      responses:
+        '201':
+          description: 成功新增系統設定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettingResponse'
+
+  /systemsettings/{key}:
+    get:
+      tags: [系統設定管理]
+      summary: 取得單一系統設定
+      description: 取得指定鍵值的系統設定詳細資訊
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "max_upload_size"
+          description: 系統設定鍵值
+      responses:
+        '200':
+          description: 成功取得系統設定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettingResponse'
+        '404':
+          description: 找不到指定的系統設定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      tags: [系統設定管理]
+      summary: 更新系統設定
+      description: 更新指定鍵值的系統設定
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "max_upload_size"
+          description: 系統設定鍵值
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemSettingUpdate'
+      responses:
+        '200':
+          description: 成功更新系統設定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettingResponse'
+        '404':
+          description: 找不到指定的系統設定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    delete:
+      tags: [系統設定管理]
+      summary: 刪除系統設定
+      description: 刪除指定鍵值的系統設定
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "max_upload_size"
+          description: 系統設定鍵值
+      responses:
+        '200':
+          description: 成功刪除系統設定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到指定的系統設定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # API 設定管理 API
+  /apisettings:
+    get:
+      tags: [API設定管理]
+      summary: 取得 API 設定清單
+      description: 取得所有 API 金鑰和訪問設定的管理清單
+      parameters:
+        - name: page
+          in: query
+          description: 分頁頁碼
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: 每頁筆數
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          description: API 金鑰狀態篩選
+          schema:
+            type: string
+            enum: [待審核, 已核准, 已拒絕, 已停用, 已過期]
+        - name: applicant_type
+          in: query
+          description: 申請者類型篩選
+          schema:
+            type: string
+            enum: [個人, 學校, 機構, 企業]
+        - name: api_type
+          in: query
+          description: API 類型篩選
+          schema:
+            type: string
+            enum: [論文查詢, 統計資料, 完整存取, 自訂權限]
+        - name: keyword
+          in: query
+          description: 關鍵字搜尋（申請者名稱或機構）
+          schema:
+            type: string
+            example: "台灣大學"
+      responses:
+        '200':
+          description: 成功取得 API 設定清單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSettingListResponse'
+    
+    post:
+      tags: [API設定管理]
+      summary: 新增 API 申請
+      description: 建立一個新的 API 金鑰申請
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiSettingCreate'
+      responses:
+        '201':
+          description: 成功新增 API 申請
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSettingResponse'
+
+  /apisettings/{id}:
+    get:
+      tags: [API設定管理]
+      summary: 取得單一 API 設定
+      description: 取得指定 ID 的 API 設定詳細資訊
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "api001"
+          description: API 設定唯一識別碼
+      responses:
+        '200':
+          description: 成功取得 API 設定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSettingResponse'
+        '404':
+          description: 找不到指定的 API 設定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      tags: [API設定管理]
+      summary: 更新 API 設定
+      description: 更新指定 ID 的 API 設定資訊
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "api001"
+          description: API 設定唯一識別碼
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApiSettingUpdate'
+      responses:
+        '200':
+          description: 成功更新 API 設定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSettingResponse'
+        '404':
+          description: 找不到指定的 API 設定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    delete:
+      tags: [API設定管理]
+      summary: 刪除 API 設定
+      description: 刪除指定 ID 的 API 設定
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "api001"
+          description: API 設定唯一識別碼
+      responses:
+        '200':
+          description: 成功刪除 API 設定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到指定的 API 設定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /apisettings/{id}/approve:
+    post:
+      tags: [API設定管理]
+      summary: 核准 API 申請
+      description: 核准指定的 API 申請並生成金鑰
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "api001"
+          description: API 設定唯一識別碼
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                approval_note:
+                  type: string
+                  description: 核准備註
+                  example: "申請資料完整，核准使用"
+                rate_limit:
+                  type: integer
+                  description: 每日請求限制
+                  example: 1000
+                expires_at:
+                  type: string
+                  format: date-time
+                  description: 金鑰過期時間
+                  example: "2025-12-31T23:59:59Z"
+      responses:
+        '200':
+          description: 成功核准 API 申請
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSettingResponse'
+
+  /apisettings/{id}/reject:
+    post:
+      tags: [API設定管理]
+      summary: 拒絕 API 申請
+      description: 拒絕指定的 API 申請
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "api001"
+          description: API 設定唯一識別碼
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rejection_reason]
+              properties:
+                rejection_reason:
+                  type: string
+                  description: 拒絕原因
+                  example: "申請資料不完整，請補充相關文件"
+      responses:
+        '200':
+          description: 成功拒絕 API 申請
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSettingResponse'
+
+  /apisettings/{id}/regenerate-key:
+    post:
+      tags: [API設定管理]
+      summary: 重新生成 API 金鑰
+      description: 為指定的 API 設定重新生成金鑰
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "api001"
+          description: API 設定唯一識別碼
+      responses:
+        '200':
+          description: 成功重新生成 API 金鑰
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiSettingResponse'
+
+  /apisettings/statistics:
+    get:
+      tags: [API設定管理]
+      summary: 取得 API 使用統計
+      description: 取得 API 金鑰的使用統計資料
+      parameters:
+        - name: api_key_id
+          in: query
+          description: 特定 API 金鑰 ID
+          schema:
+            type: string
+            example: "api001"
+        - name: date_from
+          in: query
+          description: 統計開始日期
+          schema:
+            type: string
+            format: date
+            example: "2025-09-01"
+        - name: date_to
+          in: query
+          description: 統計結束日期
+          schema:
+            type: string
+            format: date
+            example: "2025-09-30"
+      responses:
+        '200':
+          description: 成功取得 API 使用統計
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiStatisticsResponse'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -453,6 +1931,106 @@ components:
       bearerFormat: JWT
 
   schemas:
+    # 認證相關 Schema
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          description: 電子郵件
+          example: "admin@ncl.edu.tw"
+        password:
+          type: string
+          description: 密碼
+          example: "password123"
+
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: object
+          properties:
+            token:
+              type: string
+              description: JWT 認證令牌
+              example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+            expires_in:
+              type: integer
+              description: 令牌有效期（秒）
+              example: 3600
+            user:
+              $ref: '#/components/schemas/UserProfile'
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 使用者唯一識別碼
+          example: "admin001"
+        name:
+          type: string
+          description: 姓名
+          example: "國圖管理員"
+        email:
+          type: string
+          format: email
+          description: 電子郵件
+          example: "admin@ncl.edu.tw"
+        department:
+          type: string
+          description: 單位
+          example: "國家圖書館"
+        position:
+          type: string
+          description: 職稱
+          example: "系統管理員"
+        permissions:
+          type: array
+          items:
+            type: string
+          description: 權限清單
+          example: ["公告管理", "帳號管理", "系統設定"]
+        last_login:
+          type: string
+          format: date-time
+          description: 最後登入時間
+          example: "2025-09-25T14:17:31Z"
+
+    UserProfileResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          $ref: '#/components/schemas/UserProfile'
+
     # 公告相關 Schema
     Announcement:
       type: object
@@ -914,6 +2492,1681 @@ components:
             $ref: '#/components/schemas/SchoolUser'
         result_info:
           $ref: '#/components/schemas/PaginationInfo'
+
+    # 論文管理相關 Schema
+    Thesis:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 論文唯一識別碼
+          example: "1"
+        title:
+          type: string
+          description: 論文標題
+          example: "台灣博碩士論文網發展現況與展望"
+        author:
+          type: string
+          description: 作者
+          example: "王小明"
+        school:
+          type: string
+          description: 學校名稱
+          example: "國立臺灣大學"
+        department:
+          type: string
+          description: 系所名稱
+          example: "資訊工程學系"
+        degree:
+          type: string
+          description: 學位
+          enum: [碩士, 博士, 其他]
+          example: "碩士"
+        year:
+          type: integer
+          description: 年度
+          example: 113
+        abstract:
+          type: string
+          description: 論文摘要
+          example: "本論文探討台灣博碩士論文網的發展現況..."
+        keywords:
+          type: array
+          items:
+            type: string
+          description: 關鍵字
+          example: ["論文網", "台灣", "Open Access"]
+        advisor:
+          type: string
+          description: 指導教授
+          example: "李教授"
+        status:
+          type: string
+          description: 論文狀態
+          enum: [審核中, 已通過, 已拒絕, 已發布]
+          example: "已發布"
+        full_text_available:
+          type: boolean
+          description: 是否有全文
+          example: true
+        download_url:
+          type: string
+          description: 下載連結
+          example: "https://ndltd.ncl.edu.tw/download/1"
+        view_count:
+          type: integer
+          description: 瀏覽次數
+          example: 1250
+        download_count:
+          type: integer
+          description: 下載次數
+          example: 89
+        created_at:
+          type: string
+          format: date-time
+          description: 建立時間
+          example: "2025-09-25T14:20:40Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新時間
+          example: "2025-09-25T14:20:40Z"
+
+    ThesisCreate:
+      type: object
+      required: [title, author, school, degree, year]
+      properties:
+        title:
+          type: string
+          description: 論文標題
+          example: "台灣博碩士論文網發展現況與展望"
+        author:
+          type: string
+          description: 作者
+          example: "王小明"
+        school:
+          type: string
+          description: 學校名稱
+          example: "國立臺灣大學"
+        department:
+          type: string
+          description: 系所名稱
+          example: "資訊工程學系"
+        degree:
+          type: string
+          description: 學位
+          enum: [碩士, 博士, 其他]
+          example: "碩士"
+        year:
+          type: integer
+          description: 年度
+          example: 113
+        abstract:
+          type: string
+          description: 論文摘要
+          example: "本論文探討台灣博碩士論文網的發展現況..."
+        keywords:
+          type: array
+          items:
+            type: string
+          description: 關鍵字
+          example: ["論文網", "台灣", "Open Access"]
+        advisor:
+          type: string
+          description: 指導教授
+          example: "李教授"
+        full_text_available:
+          type: boolean
+          description: 是否有全文
+          example: true
+        download_url:
+          type: string
+          description: 下載連結
+          example: "https://ndltd.ncl.edu.tw/download/1"
+
+    ThesisUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          description: 論文標題
+          example: "台灣博碩士論文網發展現況與展望"
+        author:
+          type: string
+          description: 作者
+          example: "王小明"
+        school:
+          type: string
+          description: 學校名稱
+          example: "國立臺灣大學"
+        department:
+          type: string
+          description: 系所名稱
+          example: "資訊工程學系"
+        degree:
+          type: string
+          description: 學位
+          enum: [碩士, 博士, 其他]
+          example: "碩士"
+        year:
+          type: integer
+          description: 年度
+          example: 113
+        abstract:
+          type: string
+          description: 論文摘要
+          example: "本論文探討台灣博碩士論文網的發展現況..."
+        keywords:
+          type: array
+          items:
+            type: string
+          description: 關鍵字
+          example: ["論文網", "台灣", "Open Access"]
+        advisor:
+          type: string
+          description: 指導教授
+          example: "李教授"
+        status:
+          type: string
+          description: 論文狀態
+          enum: [審核中, 已通過, 已拒絕, 已發布]
+          example: "已發布"
+        full_text_available:
+          type: boolean
+          description: 是否有全文
+          example: true
+        download_url:
+          type: string
+          description: 下載連結
+          example: "https://ndltd.ncl.edu.tw/download/1"
+
+    ThesisResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          $ref: '#/components/schemas/Thesis'
+
+    ThesisListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/Thesis'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    ThesisSearchResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/Thesis'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    # 問題回報管理相關 Schema
+    Issue:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 問題回報唯一識別碼
+          example: "ISS-20250925-001"
+        source:
+          type: string
+          description: 問題來源
+          enum: [學生, 學校]
+          example: "學生"
+        reporter_info:
+          type: object
+          description: 回報者資訊
+          properties:
+            name:
+              type: string
+              description: 回報者姓名
+              example: "王小明"
+            email:
+              type: string
+              format: email
+              description: 回報者電子郵件
+              example: "student@example.edu.tw"
+            school:
+              type: string
+              description: 學校名稱（學生來源時）
+              example: "國立臺灣大學"
+            department:
+              type: string
+              description: 系所名稱（學生來源時）
+              example: "資訊工程學系"
+        content:
+          type: string
+          description: 問題描述內容
+          example: "論文上傳時出現錯誤，無法完成檔案上傳"
+        category:
+          type: string
+          description: 問題分類
+          enum: [系統問題, 操作問題, 帳號問題, 論文問題, 其他]
+          example: "系統問題"
+        priority:
+          type: string
+          description: 優先級
+          enum: [低, 中, 高, 緊急]
+          example: "中"
+        status:
+          type: string
+          description: 問題處理狀態
+          enum: [待處理, 處理中, 已解決, 已關閉]
+          example: "待處理"
+        assigned_to:
+          type: string
+          description: 指派處理人員
+          example: "系統管理員"
+          nullable: true
+        response:
+          type: string
+          description: 管理員回覆內容
+          example: "已收到您的問題回報，我們會盡快處理"
+          nullable: true
+        resolution:
+          type: string
+          description: 解決方案說明
+          example: "已修復檔案上傳功能的錯誤"
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          description: 問題提交時間
+          example: "2025-09-25T14:22:51Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: 問題最後更新時間
+          example: "2025-09-25T14:22:51Z"
+        resolved_at:
+          type: string
+          format: date-time
+          description: 問題解決時間
+          example: "2025-09-25T16:30:00Z"
+          nullable: true
+
+    IssueCreate:
+      type: object
+      required: [source, content, category]
+      properties:
+        source:
+          type: string
+          description: 問題來源
+          enum: [學生, 學校]
+          example: "學生"
+        reporter_info:
+          type: object
+          description: 回報者資訊
+          properties:
+            name:
+              type: string
+              description: 回報者姓名
+              example: "王小明"
+            email:
+              type: string
+              format: email
+              description: 回報者電子郵件
+              example: "student@example.edu.tw"
+            school:
+              type: string
+              description: 學校名稱
+              example: "國立臺灣大學"
+            department:
+              type: string
+              description: 系所名稱
+              example: "資訊工程學系"
+        content:
+          type: string
+          description: 問題描述內容
+          example: "論文上傳時出現錯誤，無法完成檔案上傳"
+        category:
+          type: string
+          description: 問題分類
+          enum: [系統問題, 操作問題, 帳號問題, 論文問題, 其他]
+          example: "系統問題"
+        priority:
+          type: string
+          description: 優先級
+          enum: [低, 中, 高, 緊急]
+          example: "中"
+        assigned_to:
+          type: string
+          description: 指派處理人員
+          example: "系統管理員"
+
+    IssueUpdate:
+      type: object
+      properties:
+        category:
+          type: string
+          description: 問題分類
+          enum: [系統問題, 操作問題, 帳號問題, 論文問題, 其他]
+          example: "系統問題"
+        priority:
+          type: string
+          description: 優先級
+          enum: [低, 中, 高, 緊急]
+          example: "高"
+        status:
+          type: string
+          description: 問題處理狀態
+          enum: [待處理, 處理中, 已解決, 已關閉]
+          example: "處理中"
+        assigned_to:
+          type: string
+          description: 指派處理人員
+          example: "技術支援專員"
+        response:
+          type: string
+          description: 管理員回覆內容
+          example: "我們已經確認問題，正在進行修復"
+        resolution:
+          type: string
+          description: 解決方案說明
+          example: "已修復檔案上傳功能的錯誤，請重新嘗試上傳"
+
+    IssueResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          $ref: '#/components/schemas/Issue'
+
+    IssueListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/Issue'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    # 學校管理相關 Schema
+    School:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 學校唯一識別碼
+          example: "school001"
+        name:
+          type: string
+          description: 學校名稱
+          example: "國立臺灣大學"
+        english_name:
+          type: string
+          description: 學校英文名稱
+          example: "National Taiwan University"
+        type:
+          type: string
+          description: 學校類型
+          enum: [國立, 私立, 技職, 其他]
+          example: "國立"
+        region:
+          type: string
+          description: 地區
+          example: "台北市"
+        address:
+          type: string
+          description: 地址
+          example: "台北市大安區羅斯福路四段1號"
+        phone:
+          type: string
+          description: 電話
+          example: "02-3366-3366"
+        website:
+          type: string
+          description: 官方網站
+          example: "https://www.ntu.edu.tw"
+        email:
+          type: string
+          format: email
+          description: 聯絡信箱
+          example: "contact@ntu.edu.tw"
+        status:
+          type: string
+          description: 學校狀態
+          enum: [啟用, 停用, 暫停]
+          example: "啟用"
+        established_year:
+          type: integer
+          description: 創校年份
+          example: 1928
+        student_count:
+          type: integer
+          description: 學生人數
+          example: 32000
+        department_count:
+          type: integer
+          description: 科系數量
+          example: 56
+        created_at:
+          type: string
+          format: date-time
+          description: 建立時間
+          example: "2025-09-25T14:29:06Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新時間
+          example: "2025-09-25T14:29:06Z"
+
+    SchoolCreate:
+      type: object
+      required: [name, type, region]
+      properties:
+        name:
+          type: string
+          description: 學校名稱
+          example: "國立臺灣大學"
+        english_name:
+          type: string
+          description: 學校英文名稱
+          example: "National Taiwan University"
+        type:
+          type: string
+          description: 學校類型
+          enum: [國立, 私立, 技職, 其他]
+          example: "國立"
+        region:
+          type: string
+          description: 地區
+          example: "台北市"
+        address:
+          type: string
+          description: 地址
+          example: "台北市大安區羅斯福路四段1號"
+        phone:
+          type: string
+          description: 電話
+          example: "02-3366-3366"
+        website:
+          type: string
+          description: 官方網站
+          example: "https://www.ntu.edu.tw"
+        email:
+          type: string
+          format: email
+          description: 聯絡信箱
+          example: "contact@ntu.edu.tw"
+        established_year:
+          type: integer
+          description: 創校年份
+          example: 1928
+
+    SchoolUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          description: 學校名稱
+          example: "國立臺灣大學"
+        english_name:
+          type: string
+          description: 學校英文名稱
+          example: "National Taiwan University"
+        type:
+          type: string
+          description: 學校類型
+          enum: [國立, 私立, 技職, 其他]
+          example: "國立"
+        region:
+          type: string
+          description: 地區
+          example: "台北市"
+        address:
+          type: string
+          description: 地址
+          example: "台北市大安區羅斯福路四段1號"
+        phone:
+          type: string
+          description: 電話
+          example: "02-3366-3366"
+        website:
+          type: string
+          description: 官方網站
+          example: "https://www.ntu.edu.tw"
+        email:
+          type: string
+          format: email
+          description: 聯絡信箱
+          example: "contact@ntu.edu.tw"
+        status:
+          type: string
+          description: 學校狀態
+          enum: [啟用, 停用, 暫停]
+          example: "啟用"
+        established_year:
+          type: integer
+          description: 創校年份
+          example: 1928
+        student_count:
+          type: integer
+          description: 學生人數
+          example: 32000
+
+    SchoolResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          $ref: '#/components/schemas/School'
+
+    SchoolListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/School'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    # 科系管理相關 Schema
+    Department:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 科系唯一識別碼
+          example: "dept001"
+        school_id:
+          type: string
+          description: 所屬學校ID
+          example: "school001"
+        school_name:
+          type: string
+          description: 所屬學校名稱
+          example: "國立臺灣大學"
+        name:
+          type: string
+          description: 科系名稱
+          example: "資訊工程學系"
+        english_name:
+          type: string
+          description: 科系英文名稱
+          example: "Department of Computer Science and Information Engineering"
+        college:
+          type: string
+          description: 所屬學院
+          example: "工學院"
+        degree_types:
+          type: array
+          items:
+            type: string
+          description: 提供學位類型
+          example: ["學士", "碩士", "博士"]
+        contact_person:
+          type: string
+          description: 聯絡人
+          example: "王教授"
+        phone:
+          type: string
+          description: 電話
+          example: "02-3366-3000"
+        email:
+          type: string
+          format: email
+          description: 聯絡信箱
+          example: "csie@ntu.edu.tw"
+        website:
+          type: string
+          description: 科系網站
+          example: "https://www.csie.ntu.edu.tw"
+        status:
+          type: string
+          description: 科系狀態
+          enum: [啟用, 停用, 暫停]
+          example: "啟用"
+        student_count:
+          type: integer
+          description: 學生人數
+          example: 1200
+        faculty_count:
+          type: integer
+          description: 教師人數
+          example: 45
+        created_at:
+          type: string
+          format: date-time
+          description: 建立時間
+          example: "2025-09-25T14:29:06Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新時間
+          example: "2025-09-25T14:29:06Z"
+
+    DepartmentCreate:
+      type: object
+      required: [school_id, name, college]
+      properties:
+        school_id:
+          type: string
+          description: 所屬學校ID
+          example: "school001"
+        name:
+          type: string
+          description: 科系名稱
+          example: "資訊工程學系"
+        english_name:
+          type: string
+          description: 科系英文名稱
+          example: "Department of Computer Science and Information Engineering"
+        college:
+          type: string
+          description: 所屬學院
+          example: "工學院"
+        degree_types:
+          type: array
+          items:
+            type: string
+          description: 提供學位類型
+          example: ["學士", "碩士", "博士"]
+        contact_person:
+          type: string
+          description: 聯絡人
+          example: "王教授"
+        phone:
+          type: string
+          description: 電話
+          example: "02-3366-3000"
+        email:
+          type: string
+          format: email
+          description: 聯絡信箱
+          example: "csie@ntu.edu.tw"
+        website:
+          type: string
+          description: 科系網站
+          example: "https://www.csie.ntu.edu.tw"
+
+    DepartmentUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          description: 科系名稱
+          example: "資訊工程學系"
+        english_name:
+          type: string
+          description: 科系英文名稱
+          example: "Department of Computer Science and Information Engineering"
+        college:
+          type: string
+          description: 所屬學院
+          example: "工學院"
+        degree_types:
+          type: array
+          items:
+            type: string
+          description: 提供學位類型
+          example: ["學士", "碩士", "博士"]
+        contact_person:
+          type: string
+          description: 聯絡人
+          example: "王教授"
+        phone:
+          type: string
+          description: 電話
+          example: "02-3366-3000"
+        email:
+          type: string
+          format: email
+          description: 聯絡信箱
+          example: "csie@ntu.edu.tw"
+        website:
+          type: string
+          description: 科系網站
+          example: "https://www.csie.ntu.edu.tw"
+        status:
+          type: string
+          description: 科系狀態
+          enum: [啟用, 停用, 暫停]
+          example: "啟用"
+        student_count:
+          type: integer
+          description: 學生人數
+          example: 1200
+        faculty_count:
+          type: integer
+          description: 教師人數
+          example: 45
+
+    DepartmentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          $ref: '#/components/schemas/Department'
+
+    DepartmentListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/Department'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    # 常見問答管理相關 Schema
+    Faq:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 常見問答唯一識別碼
+          example: "faq001"
+        question:
+          type: string
+          description: 問題
+          example: "如何上傳論文檔案？"
+        answer:
+          type: string
+          description: 答案
+          example: "請登入系統後，點選「論文上傳」功能，依照步驟指示完成上傳。"
+        category:
+          type: string
+          description: 問答分類
+          enum: [系統使用, 論文上傳, 帳號問題, 技術支援, 其他]
+          example: "論文上傳"
+        status:
+          type: string
+          description: 問答狀態
+          enum: [啟用, 停用, 草稿]
+          example: "啟用"
+        priority:
+          type: integer
+          description: 顯示優先順序
+          example: 1
+        view_count:
+          type: integer
+          description: 瀏覽次數
+          example: 156
+        created_at:
+          type: string
+          format: date-time
+          description: 建立時間
+          example: "2025-09-25T14:34:58Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新時間
+          example: "2025-09-25T14:34:58Z"
+
+    FaqCreate:
+      type: object
+      required: [question, answer, category]
+      properties:
+        question:
+          type: string
+          description: 問題
+          example: "如何上傳論文檔案？"
+        answer:
+          type: string
+          description: 答案
+          example: "請登入系統後，點選「論文上傳」功能，依照步驟指示完成上傳。"
+        category:
+          type: string
+          description: 問答分類
+          enum: [系統使用, 論文上傳, 帳號問題, 技術支援, 其他]
+          example: "論文上傳"
+        priority:
+          type: integer
+          description: 顯示優先順序
+          example: 1
+
+    FaqUpdate:
+      type: object
+      properties:
+        question:
+          type: string
+          description: 問題
+          example: "如何上傳論文檔案？"
+        answer:
+          type: string
+          description: 答案
+          example: "請登入系統後，點選「論文上傳」功能，依照步驟指示完成上傳。"
+        category:
+          type: string
+          description: 問答分類
+          enum: [系統使用, 論文上傳, 帳號問題, 技術支援, 其他]
+          example: "論文上傳"
+        status:
+          type: string
+          description: 問答狀態
+          enum: [啟用, 停用, 草稿]
+          example: "啟用"
+        priority:
+          type: integer
+          description: 顯示優先順序
+          example: 1
+
+    FaqResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          $ref: '#/components/schemas/Faq'
+
+    FaqListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/Faq'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    # 內容管理相關 Schema
+    Content:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 內容唯一識別碼
+          example: "content001"
+        title_zh:
+          type: string
+          description: 中文標題
+          example: "系統使用指南"
+        title_en:
+          type: string
+          description: 英文標題
+          example: "System User Guide"
+        content_zh:
+          type: string
+          description: 中文內容
+          example: "本指南將協助您了解如何使用博碩士論文系統..."
+        content_en:
+          type: string
+          description: 英文內容
+          example: "This guide will help you understand how to use the thesis system..."
+        type:
+          type: string
+          description: 內容類型
+          enum: [公告, 新聞, 使用說明, 政策文件, 其他]
+          example: "使用說明"
+        status:
+          type: string
+          description: 內容狀態
+          enum: [草稿, 已發布, 已下架]
+          example: "已發布"
+        language:
+          type: string
+          description: 語言版本
+          enum: [中文, 英文, 雙語]
+          example: "雙語"
+        author:
+          type: string
+          description: 作者
+          example: "系統管理員"
+        publish_date:
+          type: string
+          format: date-time
+          description: 發布時間
+          example: "2025-09-25T14:34:58Z"
+        view_count:
+          type: integer
+          description: 瀏覽次數
+          example: 245
+        created_at:
+          type: string
+          format: date-time
+          description: 建立時間
+          example: "2025-09-25T14:34:58Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新時間
+          example: "2025-09-25T14:34:58Z"
+
+    ContentCreate:
+      type: object
+      required: [title_zh, content_zh, type]
+      properties:
+        title_zh:
+          type: string
+          description: 中文標題
+          example: "系統使用指南"
+        title_en:
+          type: string
+          description: 英文標題
+          example: "System User Guide"
+        content_zh:
+          type: string
+          description: 中文內容
+          example: "本指南將協助您了解如何使用博碩士論文系統..."
+        content_en:
+          type: string
+          description: 英文內容
+          example: "This guide will help you understand how to use the thesis system..."
+        type:
+          type: string
+          description: 內容類型
+          enum: [公告, 新聞, 使用說明, 政策文件, 其他]
+          example: "使用說明"
+        author:
+          type: string
+          description: 作者
+          example: "系統管理員"
+        publish_date:
+          type: string
+          format: date-time
+          description: 發布時間
+          example: "2025-09-25T14:34:58Z"
+
+    ContentUpdate:
+      type: object
+      properties:
+        title_zh:
+          type: string
+          description: 中文標題
+          example: "系統使用指南"
+        title_en:
+          type: string
+          description: 英文標題
+          example: "System User Guide"
+        content_zh:
+          type: string
+          description: 中文內容
+          example: "本指南將協助您了解如何使用博碩士論文系統..."
+        content_en:
+          type: string
+          description: 英文內容
+          example: "This guide will help you understand how to use the thesis system..."
+        type:
+          type: string
+          description: 內容類型
+          enum: [公告, 新聞, 使用說明, 政策文件, 其他]
+          example: "使用說明"
+        status:
+          type: string
+          description: 內容狀態
+          enum: [草稿, 已發布, 已下架]
+          example: "已發布"
+        author:
+          type: string
+          description: 作者
+          example: "系統管理員"
+        publish_date:
+          type: string
+          format: date-time
+          description: 發布時間
+          example: "2025-09-25T14:34:58Z"
+
+    ContentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          $ref: '#/components/schemas/Content'
+
+    ContentListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/Content'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    # 系統設定管理相關 Schema
+    SystemSetting:
+      type: object
+      properties:
+        key:
+          type: string
+          description: 設定鍵值
+          example: "max_upload_size"
+        value:
+          type: string
+          description: 設定值
+          example: "100"
+        description:
+          type: string
+          description: 設定說明
+          example: "檔案上傳大小限制（MB）"
+        category:
+          type: string
+          description: 設定分類
+          enum: [系統配置, 功能開關, 限制設定, 顯示設定, 其他]
+          example: "限制設定"
+        data_type:
+          type: string
+          description: 資料類型
+          enum: [string, integer, boolean, json]
+          example: "integer"
+        is_public:
+          type: boolean
+          description: 是否為公開設定
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          description: 建立時間
+          example: "2025-09-25T14:34:58Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新時間
+          example: "2025-09-25T14:34:58Z"
+
+    SystemSettingCreate:
+      type: object
+      required: [key, value, description, category]
+      properties:
+        key:
+          type: string
+          description: 設定鍵值
+          example: "max_upload_size"
+        value:
+          type: string
+          description: 設定值
+          example: "100"
+        description:
+          type: string
+          description: 設定說明
+          example: "檔案上傳大小限制（MB）"
+        category:
+          type: string
+          description: 設定分類
+          enum: [系統配置, 功能開關, 限制設定, 顯示設定, 其他]
+          example: "限制設定"
+        data_type:
+          type: string
+          description: 資料類型
+          enum: [string, integer, boolean, json]
+          example: "integer"
+        is_public:
+          type: boolean
+          description: 是否為公開設定
+          example: false
+
+    SystemSettingUpdate:
+      type: object
+      properties:
+        value:
+          type: string
+          description: 設定值
+          example: "200"
+        description:
+          type: string
+          description: 設定說明
+          example: "檔案上傳大小限制（MB）"
+        category:
+          type: string
+          description: 設定分類
+          enum: [系統配置, 功能開關, 限制設定, 顯示設定, 其他]
+          example: "限制設定"
+        data_type:
+          type: string
+          description: 資料類型
+          enum: [string, integer, boolean, json]
+          example: "integer"
+        is_public:
+          type: boolean
+          description: 是否為公開設定
+          example: false
+
+    SystemSettingResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          $ref: '#/components/schemas/SystemSetting'
+
+    SystemSettingListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/SystemSetting'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    # API 設定管理相關 Schema
+    ApiSetting:
+      type: object
+      properties:
+        id:
+          type: string
+          description: API 設定唯一識別碼
+          example: "api001"
+        applicant_name:
+          type: string
+          description: 申請者姓名
+          example: "王小明"
+        applicant_email:
+          type: string
+          format: email
+          description: 申請者電子郵件
+          example: "wang@example.com"
+        applicant_type:
+          type: string
+          description: 申請者類型
+          enum: [個人, 學校, 機構, 企業]
+          example: "學校"
+        organization:
+          type: string
+          description: 申請機構名稱
+          example: "國立臺灣大學"
+        api_key:
+          type: string
+          description: API 金鑰
+          example: "ndltd_api_key_1234567890abcdef"
+        api_type:
+          type: string
+          description: API 類型
+          enum: [論文查詢, 統計資料, 完整存取, 自訂權限]
+          example: "論文查詢"
+        permissions:
+          type: array
+          items:
+            type: string
+          description: API 權限清單
+          example: ["thesis:read", "statistics:read"]
+        status:
+          type: string
+          description: API 金鑰狀態
+          enum: [待審核, 已核准, 已拒絕, 已停用, 已過期]
+          example: "已核准"
+        rate_limit:
+          type: integer
+          description: 每日請求限制
+          example: 1000
+        usage_purpose:
+          type: string
+          description: 使用目的
+          example: "學術研究用途，分析論文趨勢"
+        contact_phone:
+          type: string
+          description: 聯絡電話
+          example: "02-3366-3366"
+        website:
+          type: string
+          description: 申請者網站
+          example: "https://www.ntu.edu.tw"
+        ip_whitelist:
+          type: array
+          items:
+            type: string
+          description: IP 白名單
+          example: ["140.112.0.0/16", "192.168.1.100"]
+        expires_at:
+          type: string
+          format: date-time
+          description: 金鑰過期時間
+          example: "2025-12-31T23:59:59Z"
+        last_used_at:
+          type: string
+          format: date-time
+          description: 最後使用時間
+          example: "2025-09-25T14:38:53Z"
+          nullable: true
+        total_requests:
+          type: integer
+          description: 總請求次數
+          example: 15420
+        approval_note:
+          type: string
+          description: 核准備註
+          example: "申請資料完整，核准使用"
+          nullable: true
+        rejection_reason:
+          type: string
+          description: 拒絕原因
+          example: "申請資料不完整"
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          description: 申請時間
+          example: "2025-09-25T14:38:53Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新時間
+          example: "2025-09-25T14:38:53Z"
+
+    ApiSettingCreate:
+      type: object
+      required: [applicant_name, applicant_email, applicant_type, api_type, usage_purpose]
+      properties:
+        applicant_name:
+          type: string
+          description: 申請者姓名
+          example: "王小明"
+        applicant_email:
+          type: string
+          format: email
+          description: 申請者電子郵件
+          example: "wang@example.com"
+        applicant_type:
+          type: string
+          description: 申請者類型
+          enum: [個人, 學校, 機構, 企業]
+          example: "學校"
+        organization:
+          type: string
+          description: 申請機構名稱
+          example: "國立臺灣大學"
+        api_type:
+          type: string
+          description: API 類型
+          enum: [論文查詢, 統計資料, 完整存取, 自訂權限]
+          example: "論文查詢"
+        permissions:
+          type: array
+          items:
+            type: string
+          description: 申請的 API 權限清單
+          example: ["thesis:read", "statistics:read"]
+        usage_purpose:
+          type: string
+          description: 使用目的
+          example: "學術研究用途，分析論文趨勢"
+        contact_phone:
+          type: string
+          description: 聯絡電話
+          example: "02-3366-3366"
+        website:
+          type: string
+          description: 申請者網站
+          example: "https://www.ntu.edu.tw"
+        ip_whitelist:
+          type: array
+          items:
+            type: string
+          description: IP 白名單
+          example: ["140.112.0.0/16"]
+
+    ApiSettingUpdate:
+      type: object
+      properties:
+        applicant_name:
+          type: string
+          description: 申請者姓名
+          example: "王小明"
+        applicant_email:
+          type: string
+          format: email
+          description: 申請者電子郵件
+          example: "wang@example.com"
+        organization:
+          type: string
+          description: 申請機構名稱
+          example: "國立臺灣大學"
+        api_type:
+          type: string
+          description: API 類型
+          enum: [論文查詢, 統計資料, 完整存取, 自訂權限]
+          example: "論文查詢"
+        permissions:
+          type: array
+          items:
+            type: string
+          description: API 權限清單
+          example: ["thesis:read", "statistics:read"]
+        status:
+          type: string
+          description: API 金鑰狀態
+          enum: [待審核, 已核准, 已拒絕, 已停用, 已過期]
+          example: "已核准"
+        rate_limit:
+          type: integer
+          description: 每日請求限制
+          example: 1000
+        usage_purpose:
+          type: string
+          description: 使用目的
+          example: "學術研究用途，分析論文趨勢"
+        contact_phone:
+          type: string
+          description: 聯絡電話
+          example: "02-3366-3366"
+        website:
+          type: string
+          description: 申請者網站
+          example: "https://www.ntu.edu.tw"
+        ip_whitelist:
+          type: array
+          items:
+            type: string
+          description: IP 白名單
+          example: ["140.112.0.0/16", "192.168.1.100"]
+        expires_at:
+          type: string
+          format: date-time
+          description: 金鑰過期時間
+          example: "2025-12-31T23:59:59Z"
+
+    ApiSettingResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          $ref: '#/components/schemas/ApiSetting'
+
+    ApiSettingListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/ApiSetting'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    ApiStatistics:
+      type: object
+      properties:
+        api_key_id:
+          type: string
+          description: API 金鑰 ID
+          example: "api001"
+        applicant_name:
+          type: string
+          description: 申請者姓名
+          example: "王小明"
+        organization:
+          type: string
+          description: 申請機構名稱
+          example: "國立臺灣大學"
+        total_requests:
+          type: integer
+          description: 總請求次數
+          example: 15420
+        successful_requests:
+          type: integer
+          description: 成功請求次數
+          example: 15200
+        failed_requests:
+          type: integer
+          description: 失敗請求次數
+          example: 220
+        daily_usage:
+          type: array
+          items:
+            type: object
+            properties:
+              date:
+                type: string
+                format: date
+                example: "2025-09-25"
+              requests:
+                type: integer
+                example: 150
+          description: 每日使用量
+        endpoint_usage:
+          type: array
+          items:
+            type: object
+            properties:
+              endpoint:
+                type: string
+                example: "/api/v1/theses"
+              requests:
+                type: integer
+                example: 8500
+          description: 端點使用統計
+        rate_limit_exceeded:
+          type: integer
+          description: 超出限制次數
+          example: 5
+        last_request_at:
+          type: string
+          format: date-time
+          description: 最後請求時間
+          example: "2025-09-25T14:38:53Z"
+
+    ApiStatisticsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          oneOf:
+            - $ref: '#/components/schemas/ApiStatistics'
+            - type: array
+              items:
+                $ref: '#/components/schemas/ApiStatistics'
 
     # 通用回應 Schema
     SuccessResponse:
