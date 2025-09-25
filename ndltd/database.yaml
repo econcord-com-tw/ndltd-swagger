@@ -1,0 +1,220 @@
+openapi: 3.0.3
+info:
+  title: 博碩士論文系統 (NDLTD) 資料庫結構
+  description: |
+    ## 1. 使用者管理
+
+    ### 1.1 管理員 (users)
+    | 欄位名稱 | 資料型態 | 說明 | 約束 |
+    |---------|---------|------|------|
+    | id | VARCHAR(50) | 唯一識別碼 | PRIMARY KEY |
+    | name | VARCHAR(100) | 姓名 | NOT NULL |
+    | email | VARCHAR(255) | 電子郵件 | UNIQUE, NOT NULL |
+    | password_hash | VARCHAR(255) | 密碼雜湊 | NOT NULL |
+    | department | VARCHAR(100) | 部門 |  |
+    | position | VARCHAR(100) | 職稱 |  |
+    | permissions | JSON | 權限設定 |  |
+    | status | ENUM | 狀態 | '啟用','停用','鎖定' |
+    | last_login | TIMESTAMP | 最後登入時間 |  |
+    | created_at | TIMESTAMP | 建立時間 | DEFAULT CURRENT_TIMESTAMP |
+    | updated_at | TIMESTAMP | 更新時間 | ON UPDATE CURRENT_TIMESTAMP |
+
+    ### 1.2 學校使用者 (school_users)
+    | 欄位名稱 | 資料型態 | 說明 | 約束 |
+    |---------|---------|------|------|
+    | id | VARCHAR(50) | 唯一識別碼 | PRIMARY KEY |
+    | name | VARCHAR(100) | 姓名 | NOT NULL |
+    | email | VARCHAR(255) | 電子郵件 | UNIQUE, NOT NULL |
+    | role | ENUM | 角色 | '管理員','審查人員','工讀生','系所人員','其他' |
+    | permissions | JSON | 權限設定 |  |
+    | created_at | TIMESTAMP | 建立時間 | DEFAULT CURRENT_TIMESTAMP |
+    | updated_at | TIMESTAMP | 更新時間 | ON UPDATE CURRENT_TIMESTAMP |
+
+    ## 2. 學校與科系管理
+
+    ### 2.1 學校 (schools)
+    | 欄位名稱 | 資料型態 | 說明 | 約束 |
+    |---------|---------|------|------|
+    | id | VARCHAR(50) | 學校代碼 | PRIMARY KEY |
+    | name | VARCHAR(200) | 學校名稱 | NOT NULL |
+    | english_name | VARCHAR(300) | 英文校名 |  |
+    | type | ENUM | 學校類型 | '國立','私立','技職','其他' |
+    | region | VARCHAR(50) | 地區 | NOT NULL |
+    | address | TEXT | 地址 |  |
+    | phone | VARCHAR(20) | 電話 |  |
+    | website | VARCHAR(255) | 網站 |  |
+    | email | VARCHAR(255) | 聯絡信箱 |  |
+    | status | ENUM | 狀態 | '啟用','停用','暫停' |
+    | established_year | INT | 創校年份 |  |
+    | student_count | INT | 學生人數 | DEFAULT 0 |
+    | department_count | INT | 科系數量 | DEFAULT 0 |
+    | created_at | TIMESTAMP | 建立時間 | DEFAULT CURRENT_TIMESTAMP |
+    | updated_at | TIMESTAMP | 更新時間 | ON UPDATE CURRENT_TIMESTAMP |
+
+    ### 2.2 科系 (departments)
+    | 欄位名稱 | 資料型態 | 說明 | 約束 |
+    |---------|---------|------|------|
+    | id | VARCHAR(50) | 科系代碼 | PRIMARY KEY |
+    | school_id | VARCHAR(50) | 所屬學校 | FOREIGN KEY |
+    | name | VARCHAR(200) | 科系名稱 | NOT NULL |
+    | english_name | VARCHAR(300) | 英文系名 |  |
+    | college | VARCHAR(100) | 學院 | NOT NULL |
+    | degree_types | JSON | 學位類別 |  |
+    | contact_person | VARCHAR(100) | 聯絡人 |  |
+    | phone | VARCHAR(20) | 電話 |  |
+    | email | VARCHAR(255) | 電子郵件 |  |
+    | website | VARCHAR(255) | 網站 |  |
+    | status | ENUM | 狀態 | '啟用','停用','暫停' |
+    | student_count | INT | 學生人數 | DEFAULT 0 |
+    | faculty_count | INT | 教師人數 | DEFAULT 0 |
+    | created_at | TIMESTAMP | 建立時間 | DEFAULT CURRENT_TIMESTAMP |
+    | updated_at | TIMESTAMP | 更新時間 | ON UPDATE CURRENT_TIMESTAMP |
+
+    ## 3. 論文管理
+
+    ### 3.1 論文 (theses)
+    | 欄位名稱 | 資料型態 | 說明 | 約束 |
+    |---------|---------|------|------|
+    | id | VARCHAR(50) | 論文編號 | PRIMARY KEY |
+    | title | TEXT | 論文標題 | NOT NULL |
+    | author | VARCHAR(200) | 作者 | NOT NULL |
+    | school | VARCHAR(200) | 學校 | NOT NULL |
+    | department | VARCHAR(200) | 系所 |  |
+    | degree | ENUM | 學位 | '碩士','博士','其他' |
+    | year | INT | 年度 | NOT NULL |
+    | abstract | LONGTEXT | 摘要 |  |
+    | advisor | VARCHAR(200) | 指導教授 |  |
+    | status | ENUM | 狀態 | '審核中','已通過','已拒絕','已發布' |
+    | full_text_available | BOOLEAN | 是否有全文 | DEFAULT FALSE |
+    | download_url | VARCHAR(500) | 下載連結 |  |
+    | view_count | INT | 瀏覽次數 | DEFAULT 0 |
+    | download_count | INT | 下載次數 | DEFAULT 0 |
+    | created_at | TIMESTAMP | 建立時間 | DEFAULT CURRENT_TIMESTAMP |
+    | updated_at | TIMESTAMP | 更新時間 | ON UPDATE CURRENT_TIMESTAMP |
+
+    ### 3.2 論文關鍵字 (thesis_keywords)
+    | 欄位名稱 | 資料型態 | 說明 | 約束 |
+    |---------|---------|------|------|
+    | id | INT | 流水號 | AUTO_INCREMENT, PRIMARY KEY |
+    | thesis_id | VARCHAR(50) | 論文編號 | FOREIGN KEY |
+    | keyword | VARCHAR(100) | 關鍵字 | NOT NULL |
+
+    ## 4. 內容管理
+
+    ### 4.1 公告 (announcements)
+    | 欄位名稱 | 資料型態 | 說明 | 約束 |
+    |---------|---------|------|------|
+    | id | VARCHAR(50) | 公告編號 | PRIMARY KEY |
+    | title | VARCHAR(500) | 標題 | NOT NULL |
+    | type | ENUM | 類型 | '系統公告','最新消息','維護通知','功能更新' |
+    | summary | TEXT | 摘要 |  |
+    | content | LONGTEXT | 內容 | NOT NULL |
+    | status | ENUM | 狀態 | '草稿','已發布','已下架' |
+    | date | DATE | 公告日期 |  |
+    | publish_date | TIMESTAMP | 發佈時間 |  |
+    | author | VARCHAR(100) | 發佈者 |  |
+    | created_at | TIMESTAMP | 建立時間 | DEFAULT CURRENT_TIMESTAMP |
+    | updated_at | TIMESTAMP | 更新時間 | ON UPDATE CURRENT_TIMESTAMP |
+
+    ### 4.2 常見問答 (faqs)
+    | 欄位名稱 | 資料型態 | 說明 | 約束 |
+    |---------|---------|------|------|
+    | id | VARCHAR(50) | 問答編號 | PRIMARY KEY |
+    | question | TEXT | 問題 | NOT NULL |
+    | answer | LONGTEXT | 解答 | NOT NULL |
+    | category | ENUM | 分類 | '系統使用','論文上傳','帳號問題','技術支援','其他' |
+    | status | ENUM | 狀態 | '啟用','停用','草稿' |
+    | priority | INT | 顯示順序 | DEFAULT 0 |
+    | view_count | INT | 瀏覽次數 | DEFAULT 0 |
+    | created_at | TIMESTAMP | 建立時間 | DEFAULT CURRENT_TIMESTAMP |
+    | updated_at | TIMESTAMP | 更新時間 | ON UPDATE CURRENT_TIMESTAMP |
+
+    ## 5. 問題回報管理
+
+    ### 5.1 問題回報 (issues)
+    | 欄位名稱 | 資料型態 | 說明 | 約束 |
+    |---------|---------|------|------|
+    | id | VARCHAR(50) | 問題編號 | PRIMARY KEY |
+    | source | ENUM | 來源 | '學生','學校' |
+    | reporter_info | JSON | 回報者資訊 |  |
+    | content | LONGTEXT | 問題內容 | NOT NULL |
+    | category | ENUM | 分類 | '系統問題','操作問題','帳號問題','論文問題','其他' |
+    | priority | ENUM | 優先級 | '低','中','高','緊急' |
+    | status | ENUM | 狀態 | '待處理','處理中','已解決','已關閉' |
+    | assigned_to | VARCHAR(100) | 指派給 |  |
+    | response | LONGTEXT | 回覆內容 |  |
+    | resolution | LONGTEXT | 解決方案 |  |
+    | created_at | TIMESTAMP | 建立時間 | DEFAULT CURRENT_TIMESTAMP |
+    | updated_at | TIMESTAMP | 更新時間 | ON UPDATE CURRENT_TIMESTAMP |
+    | resolved_at | TIMESTAMP | 解決時間 |  |
+
+    ## 6. API 管理
+
+    ### 6.1 API 設定 (api_settings)
+    | 欄位名稱 | 資料型態 | 說明 | 約束 |
+    |---------|---------|------|------|
+    | id | VARCHAR(50) | 設定編號 | PRIMARY KEY |
+    | applicant_name | VARCHAR(100) | 申請人名稱 | NOT NULL |
+    | applicant_email | VARCHAR(255) | 申請人郵箱 | NOT NULL |
+    | applicant_type | ENUM | 申請人類型 | '個人','學校','機構','企業' |
+    | organization | VARCHAR(200) | 所屬單位 |  |
+    | api_key | VARCHAR(100) | API 金鑰 | UNIQUE |
+    | api_type | ENUM | API 類型 | '論文查詢','統計資料','完整存取','自訂權限' |
+    | permissions | JSON | 權限設定 |  |
+    | status | ENUM | 狀態 | '待審核','已核准','已拒絕','已停用','已過期' |
+    | rate_limit | INT | 請求頻率限制 | DEFAULT 1000 |
+    | usage_purpose | TEXT | 使用目的 | NOT NULL |
+    | contact_phone | VARCHAR(20) | 聯絡電話 |  |
+    | website | VARCHAR(255) | 網站 |  |
+    | ip_whitelist | JSON | IP 白名單 |  |
+    | expires_at | TIMESTAMP | 過期時間 |  |
+    | last_used_at | TIMESTAMP | 最後使用時間 |  |
+    | total_requests | INT | 總請求數 | DEFAULT 0 |
+    | approval_note | TEXT | 審核備註 |  |
+    | rejection_reason | TEXT | 拒絕原因 |  |
+    | created_at | TIMESTAMP | 建立時間 | DEFAULT CURRENT_TIMESTAMP |
+    | updated_at | TIMESTAMP | 更新時間 | ON UPDATE CURRENT_TIMESTAMP |
+
+    ### 6.2 API 使用記錄 (api_usage_logs)
+    | 欄位名稱 | 資料型態 | 說明 | 約束 |
+    |---------|---------|------|------|
+    | id | BIGINT | 記錄編號 | AUTO_INCREMENT, PRIMARY KEY |
+    | api_key_id | VARCHAR(50) | API 金鑰 ID | FOREIGN KEY |
+    | endpoint | VARCHAR(200) | API 端點 | NOT NULL |
+    | method | VARCHAR(10) | HTTP 方法 | NOT NULL |
+    | ip_address | VARCHAR(45) | 請求 IP |  |
+    | user_agent | TEXT | 使用者代理 |  |
+    | request_time | TIMESTAMP | 請求時間 | DEFAULT CURRENT_TIMESTAMP |
+    | response_status | INT | 回應狀態碼 |  |
+    | response_time_ms | INT | 回應時間(毫秒) |  |
+
+    ## 7. 系統設定
+
+    ### 7.1 系統設定 (system_settings)
+    | 欄位名稱 | 資料型態 | 說明 | 約束 |
+    |---------|---------|------|------|
+    | setting_key | VARCHAR(100) | 設定鍵值 | PRIMARY KEY |
+    | setting_value | TEXT | 設定值 | NOT NULL |
+    | description | TEXT | 說明 |  |
+    | category | ENUM | 分類 | '系統配置','功能開關','限制設定','顯示設定','其他' |
+    | data_type | ENUM | 資料類型 | 'string','integer','boolean','json' |
+    | is_public | BOOLEAN | 是否公開 | DEFAULT FALSE |
+    | created_at | TIMESTAMP | 建立時間 | DEFAULT CURRENT_TIMESTAMP |
+    | updated_at | TIMESTAMP | 更新時間 | ON UPDATE CURRENT_TIMESTAMP |
+
+    ## 資料表關係
+
+    1. **departments.school_id** → **schools.id**
+       - 科系屬於一個學校
+       - 一個學校可以有多個科系
+
+    2. **thesis_keywords.thesis_id** → **theses.id**
+       - 論文關鍵字屬於一篇論文
+       - 一篇論文可以有多個關鍵字
+
+    3. **api_usage_logs.api_key_id** → **api_settings.id**
+       - API 使用記錄關聯到一個 API 設定
+       - 一個 API 設定可以有多筆使用記錄
+
+    這個資料庫設計涵蓋了博碩士論文系統的主要功能模組，包括使用者管理、學校科系管理、論文管理、內容管理、問題回報、API 管理以及系統設定等核心功能。
+
