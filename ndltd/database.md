@@ -18,15 +18,7 @@
 | updated_at | TIMESTAMP | 更新時間 | ON UPDATE CURRENT_TIMESTAMP |
 
 ### 1.2 學校使用者 (school_users)
-| 欄位名稱 | 資料型態 | 說明 | 約束 |
-|---------|---------|------|------|
-| id | VARCHAR(50) | 唯一識別碼 | PRIMARY KEY |
-| name | VARCHAR(100) | 姓名 | NOT NULL |
-| email | VARCHAR(255) | 電子郵件 | UNIQUE, NOT NULL |
-| role | ENUM | 角色 | '管理員','審查人員','工讀生','系所人員','其他' |
-| permissions | JSON | 權限設定 |  |
-| created_at | TIMESTAMP | 建立時間 | DEFAULT CURRENT_TIMESTAMP |
-| updated_at | TIMESTAMP | 更新時間 | ON UPDATE CURRENT_TIMESTAMP |
+直接讀取學校端API 
 
 ## 2. 學校與科系管理
 
@@ -43,9 +35,6 @@
 | website | VARCHAR(255) | 網站 |  |
 | email | VARCHAR(255) | 聯絡信箱 |  |
 | status | ENUM | 狀態 | '啟用','停用','暫停' |
-| established_year | INT | 創校年份 |  |
-| student_count | INT | 學生人數 | DEFAULT 0 |
-| department_count | INT | 科系數量 | DEFAULT 0 |
 | created_at | TIMESTAMP | 建立時間 | DEFAULT CURRENT_TIMESTAMP |
 | updated_at | TIMESTAMP | 更新時間 | ON UPDATE CURRENT_TIMESTAMP |
 
@@ -63,8 +52,6 @@
 | email | VARCHAR(255) | 電子郵件 |  |
 | website | VARCHAR(255) | 網站 |  |
 | status | ENUM | 狀態 | '啟用','停用','暫停' |
-| student_count | INT | 學生人數 | DEFAULT 0 |
-| faculty_count | INT | 教師人數 | DEFAULT 0 |
 | created_at | TIMESTAMP | 建立時間 | DEFAULT CURRENT_TIMESTAMP |
 | updated_at | TIMESTAMP | 更新時間 | ON UPDATE CURRENT_TIMESTAMP |
 
