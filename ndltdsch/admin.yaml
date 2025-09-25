@@ -15,82 +15,605 @@ security:
   - bearerAuth: []
 
 paths:
-  # 認證 API
-
-  /me/savedtheses:
+  # 待辦事項 API
+  /todo:
     get:
-      tags: [個人資料]
-      summary: 我的收藏
-      description: 取得使用者收藏的論文列表
+      tags: [待辦事項]
+      summary: 取得待辦事項清單
+      description: 取得管理者的待辦事項清單
       responses:
         '200':
-          description: 成功取得我的收藏
+          description: 成功取得待辦事項清單
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                    example: true
-                  errors:
-                    type: array
-                    items:
-                      type: object
-                    example: []
-                  messages:
-                    type: array
-                    items:
-                      type: object
-                    example: []
-                  result:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/SavedThesis'
+                $ref: '#/components/schemas/TodoListResponse'
+
+  # 系統設定 API
+  /systemsettings:
+    get:
+      tags: [系統設定]
+      summary: 取得系統設定清單
+      description: 取得所有系統設定的 key-value 對
+      parameters:
+        - name: page
+          in: query
+          description: 分頁頁碼
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: 每頁筆數
+          schema:
+            type: integer
+            default: 20
+        - name: key
+          in: query
+          description: 依 key 名稱篩選
+          schema:
+            type: string
+            example: "site_name"
+      responses:
+        '200':
+          description: 成功取得系統設定清單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettingListResponse'
     
     post:
-      tags: [個人資料]
-      summary: 新增一筆收藏
-      description: 新增一篇論文到我的收藏
+      tags: [系統設定]
+      summary: 新增系統設定
+      description: 新增一個系統設定 key-value 對
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [id]
-              properties:
-                id:
-                  type: string
-                  description: 論文唯一識別碼
-                  example: "1"
+              $ref: '#/components/schemas/SystemSettingCreate'
+      responses:
+        '201':
+          description: 成功新增系統設定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettingResponse'
+
+  /systemsettings/{key}:
+    get:
+      tags: [系統設定]
+      summary: 取得單一系統設定
+      description: 依 key 取得特定的系統設定值
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "site_name"
+          description: 系統設定的 key
       responses:
         '200':
-          description: 成功新增收藏
+          description: 成功取得系統設定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettingResponse'
+        '404':
+          description: 找不到指定的系統設定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      tags: [系統設定]
+      summary: 更新系統設定
+      description: 更新指定 key 的系統設定值
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "site_name"
+          description: 系統設定的 key
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SystemSettingUpdate'
+      responses:
+        '200':
+          description: 成功更新系統設定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemSettingResponse'
+        '404':
+          description: 找不到指定的系統設定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    delete:
+      tags: [系統設定]
+      summary: 刪除系統設定
+      description: 刪除指定 key 的系統設定
+      parameters:
+        - name: key
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "site_name"
+          description: 系統設定的 key
+      responses:
+        '200':
+          description: 成功刪除系統設定
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到指定的系統設定
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
-  /me/savedtheses/{id}:
-    delete:
-      tags: [個人資料]
-      summary: 刪除一筆收藏
-      description: 刪除一篇已收藏的論文
+  # 主題策展管理 API
+  /exhibitions:
+    get:
+      tags: [主題策展管理]
+      summary: 取得主題策展清單
+      description: 取得所有主題策展的管理清單
+      parameters:
+        - name: page
+          in: query
+          description: 分頁頁碼
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: 每頁筆數
+          schema:
+            type: integer
+            default: 20
+        - name: category
+          in: query
+          description: 策展分類篩選
+          schema:
+            type: string
+            enum: [熱門主題, 學科領域, 時事議題, 特色研究]
+        - name: featured
+          in: query
+          description: 是否只顯示精選策展
+          schema:
+            type: boolean
+        - name: status
+          in: query
+          description: 策展狀態篩選
+          schema:
+            type: string
+            enum: [草稿, 已發布, 已下架]
+      responses:
+        '200':
+          description: 成功取得主題策展清單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExhibitionListResponse'
+    
+    post:
+      tags: [主題策展管理]
+      summary: 新增主題策展
+      description: 建立一個新的主題策展
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExhibitionCreate'
+      responses:
+        '201':
+          description: 成功新增主題策展
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExhibitionResponse'
+
+  /exhibitions/{id}:
+    get:
+      tags: [主題策展管理]
+      summary: 取得單一主題策展
+      description: 取得指定 ID 的主題策展詳細資訊
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: string
-          description: 論文唯一識別碼
+            example: "EXH-AI-EDU-2024"
+          description: 主題策展唯一識別碼
       responses:
         '200':
-          description: 成功刪除收藏
+          description: 成功取得主題策展
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExhibitionResponse'
+        '404':
+          description: 找不到指定的主題策展
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      tags: [主題策展管理]
+      summary: 更新主題策展
+      description: 更新指定 ID 的主題策展資訊
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "EXH-AI-EDU-2024"
+          description: 主題策展唯一識別碼
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExhibitionUpdate'
+      responses:
+        '200':
+          description: 成功更新主題策展
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExhibitionResponse'
+        '404':
+          description: 找不到指定的主題策展
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    delete:
+      tags: [主題策展管理]
+      summary: 刪除主題策展
+      description: 刪除指定 ID 的主題策展
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "EXH-AI-EDU-2024"
+          description: 主題策展唯一識別碼
+      responses:
+        '200':
+          description: 成功刪除主題策展
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到指定的主題策展
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /exhibitions/{id}/theses:
+    get:
+      tags: [主題策展管理]
+      summary: 取得策展包含的論文清單
+      description: 取得指定策展包含的所有論文
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "EXH-AI-EDU-2024"
+          description: 主題策展唯一識別碼
+        - name: page
+          in: query
+          description: 分頁頁碼
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: 每頁筆數
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 成功取得論文清單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExhibitionThesesResponse'
+    
+    post:
+      tags: [主題策展管理]
+      summary: 新增論文到策展
+      description: 將論文加入到指定的主題策展中
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "EXH-AI-EDU-2024"
+          description: 主題策展唯一識別碼
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [thesis_ids]
+              properties:
+                thesis_ids:
+                  type: array
+                  items:
+                    type: string
+                  description: 要加入的論文 ID 列表
+                  example: ["thesis123", "thesis456"]
+      responses:
+        '200':
+          description: 成功新增論文到策展
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /exhibitions/{id}/theses/{thesis_id}:
+    delete:
+      tags: [主題策展管理]
+      summary: 從策展中移除論文
+      description: 將指定論文從主題策展中移除
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "EXH-AI-EDU-2024"
+          description: 主題策展唯一識別碼
+        - name: thesis_id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "thesis123"
+          description: 論文唯一識別碼
+      responses:
+        '200':
+          description: 成功從策展中移除論文
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到指定的策展或論文
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # 退件範本管理 API
+  /rejecttemplates:
+    get:
+      tags: [退件範本管理]
+      summary: 取得退件範本清單
+      description: 取得所有退件範本的清單
+      parameters:
+        - name: page
+          in: query
+          description: 分頁頁碼
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: 每頁筆數
+          schema:
+            type: integer
+            default: 20
+        - name: keyword
+          in: query
+          description: 關鍵字搜尋
+          schema:
+            type: string
+            example: "格式"
+      responses:
+        '200':
+          description: 成功取得退件範本清單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RejectTemplateListResponse'
+    
+    post:
+      tags: [退件範本管理]
+      summary: 新增退件範本
+      description: 建立一個新的退件範本
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectTemplateCreate'
+      responses:
+        '201':
+          description: 成功新增退件範本
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RejectTemplateResponse'
+
+  /rejecttemplates/{id}:
+    get:
+      tags: [退件範本管理]
+      summary: 取得單一退件範本
+      description: 取得指定 ID 的退件範本內容
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "template001"
+          description: 退件範本唯一識別碼
+      responses:
+        '200':
+          description: 成功取得退件範本
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RejectTemplateResponse'
+        '404':
+          description: 找不到指定的退件範本
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      tags: [退件範本管理]
+      summary: 更新退件範本
+      description: 更新指定 ID 的退件範本內容
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "template001"
+          description: 退件範本唯一識別碼
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectTemplateUpdate'
+      responses:
+        '200':
+          description: 成功更新退件範本
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RejectTemplateResponse'
+        '404':
+          description: 找不到指定的退件範本
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    delete:
+      tags: [退件範本管理]
+      summary: 刪除退件範本
+      description: 刪除指定 ID 的退件範本
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "template001"
+          description: 退件範本唯一識別碼
+      responses:
+        '200':
+          description: 成功刪除退件範本
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到指定的退件範本
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # 科系管理 API
+  /departments:
+    get:
+      tags: [科系管理]
+      summary: 取得科系清單
+      description: 取得所有科系的清單，包含學院和科系資訊
+      parameters:
+        - name: page
+          in: query
+          description: 分頁頁碼
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: 每頁筆數
+          schema:
+            type: integer
+            default: 20
+        - name: college
+          in: query
+          description: 依學院名稱篩選
+          schema:
+            type: string
+            example: "工學院"
+        - name: keyword
+          in: query
+          description: 關鍵字搜尋（科系名稱）
+          schema:
+            type: string
+            example: "資訊"
+      responses:
+        '200':
+          description: 成功取得科系清單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepartmentListResponse'
+
+  /departments/{id}:
+    get:
+      tags: [科系管理]
+      summary: 取得單一科系資訊
+      description: 取得指定 ID 的科系詳細資訊
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "dept001"
+          description: 科系唯一識別碼
+      responses:
+        '200':
+          description: 成功取得科系資訊
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepartmentResponse'
+        '404':
+          description: 找不到指定的科系
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   # 人員管理 API (來自 users.yaml)
   /users:
@@ -1312,6 +1835,528 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SubmissionHistory'
+
+    # 待辦事項相關 Schema
+    TodoListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            type: object
+          example: []
+
+    # 系統設定相關 Schema
+    SystemSetting:
+      type: object
+      properties:
+        key:
+          type: string
+          description: 系統設定的鍵值
+          example: "site_name"
+        value:
+          type: string
+          description: 系統設定的值
+          example: "大學論文系統"
+        description:
+          type: string
+          description: 設定項目的說明
+          example: "網站名稱設定"
+        created_at:
+          type: string
+          format: date-time
+          description: 建立時間
+          example: "2024-09-25T10:44:50Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新時間
+          example: "2024-09-25T10:44:50Z"
+
+    SystemSettingCreate:
+      type: object
+      required: [key, value]
+      properties:
+        key:
+          type: string
+          description: 系統設定的鍵值
+          example: "site_name"
+        value:
+          type: string
+          description: 系統設定的值
+          example: "大學論文系統"
+        description:
+          type: string
+          description: 設定項目的說明
+          example: "網站名稱設定"
+
+    SystemSettingUpdate:
+      type: object
+      required: [value]
+      properties:
+        value:
+          type: string
+          description: 系統設定的值
+          example: "新的大學論文系統"
+        description:
+          type: string
+          description: 設定項目的說明
+          example: "更新後的網站名稱設定"
+
+    SystemSettingResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          $ref: '#/components/schemas/SystemSetting'
+
+    SystemSettingListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/SystemSetting'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+                example: "not_found"
+              message:
+                type: string
+                example: "找不到指定的系統設定"
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: object
+          example: null
+
+    # 主題策展相關 Schema
+    Exhibition:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 主題策展唯一識別碼
+          example: "EXH-AI-EDU-2024"
+        title:
+          type: string
+          description: 策展主題名稱
+          example: "人工智慧在教育領域的應用"
+        description:
+          type: string
+          description: 策展主題說明
+          example: "探討人工智慧技術如何革新教育模式，包含機器學習、自然語言處理等技術在個人化學習、智能輔導等方面的應用研究"
+        icon:
+          type: string
+          description: 主題圖示 URL 或圖示代碼
+          example: "🤖"
+        category:
+          type: string
+          description: 策展分類
+          enum: [熱門主題, 學科領域, 時事議題, 特色研究]
+          example: "熱門主題"
+        status:
+          type: string
+          description: 策展狀態
+          enum: [草稿, 已發布, 已下架]
+          example: "已發布"
+        thesis_count:
+          type: integer
+          description: 該主題包含的論文數量
+          example: 156
+        view_count:
+          type: integer
+          description: 策展瀏覽次數
+          example: 2580
+        featured:
+          type: boolean
+          description: 是否為精選策展
+          example: true
+        created_at:
+          type: string
+          format: date-time
+          description: 策展建立時間
+          example: "2024-01-15T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: 策展最後更新時間
+          example: "2024-03-20T14:45:00Z"
+        tags:
+          type: array
+          items:
+            type: string
+          description: 策展標籤
+          example: ["AI", "教育科技", "機器學習", "個人化學習"]
+        curator_info:
+          type: object
+          description: 策展人資訊
+          properties:
+            name:
+              type: string
+              example: "國立臺灣大學資訊工程學系"
+            description:
+              type: string
+              example: "由資工系教授群共同策展，精選AI教育應用相關優質論文"
+
+    ExhibitionCreate:
+      type: object
+      required: [title, description, category]
+      properties:
+        title:
+          type: string
+          description: 策展主題名稱
+          example: "人工智慧在教育領域的應用"
+        description:
+          type: string
+          description: 策展主題說明
+          example: "探討人工智慧技術如何革新教育模式"
+        icon:
+          type: string
+          description: 主題圖示 URL 或圖示代碼
+          example: "🤖"
+        category:
+          type: string
+          description: 策展分類
+          enum: [熱門主題, 學科領域, 時事議題, 特色研究]
+          example: "熱門主題"
+        featured:
+          type: boolean
+          description: 是否為精選策展
+          example: true
+        tags:
+          type: array
+          items:
+            type: string
+          description: 策展標籤
+          example: ["AI", "教育科技", "機器學習"]
+        curator_info:
+          type: object
+          description: 策展人資訊
+          properties:
+            name:
+              type: string
+              example: "國立臺灣大學資訊工程學系"
+            description:
+              type: string
+              example: "由資工系教授群共同策展"
+
+    ExhibitionUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          description: 策展主題名稱
+          example: "人工智慧在教育領域的應用"
+        description:
+          type: string
+          description: 策展主題說明
+          example: "探討人工智慧技術如何革新教育模式"
+        icon:
+          type: string
+          description: 主題圖示 URL 或圖示代碼
+          example: "🤖"
+        category:
+          type: string
+          description: 策展分類
+          enum: [熱門主題, 學科領域, 時事議題, 特色研究]
+          example: "熱門主題"
+        status:
+          type: string
+          description: 策展狀態
+          enum: [草稿, 已發布, 已下架]
+          example: "已發布"
+        featured:
+          type: boolean
+          description: 是否為精選策展
+          example: true
+        tags:
+          type: array
+          items:
+            type: string
+          description: 策展標籤
+          example: ["AI", "教育科技", "機器學習"]
+        curator_info:
+          type: object
+          description: 策展人資訊
+          properties:
+            name:
+              type: string
+              example: "國立臺灣大學資訊工程學系"
+            description:
+              type: string
+              example: "由資工系教授群共同策展"
+
+    ExhibitionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          $ref: '#/components/schemas/Exhibition'
+
+    ExhibitionListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/Exhibition'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    ExhibitionThesesResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/Thesis'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    # 退件範本相關 Schema
+    RejectTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 退件範本唯一識別碼
+          example: "template001"
+        content:
+          type: string
+          description: 退件範本內容
+          example: "論文格式不符合規定，請重新調整後再次提交。"
+        created_at:
+          type: string
+          format: date-time
+          description: 建立時間
+          example: "2024-09-25T10:48:47Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新時間
+          example: "2024-09-25T10:48:47Z"
+
+    RejectTemplateCreate:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          description: 退件範本內容
+          example: "論文格式不符合規定，請重新調整後再次提交。"
+
+    RejectTemplateUpdate:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          description: 退件範本內容
+          example: "論文格式不符合規定，請重新調整後再次提交。"
+
+    RejectTemplateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          $ref: '#/components/schemas/RejectTemplate'
+
+    RejectTemplateListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/RejectTemplate'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    # 科系相關 Schema
+    Department:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 科系唯一識別碼
+          example: "dept001"
+        college:
+          type: string
+          description: 學院名稱
+          example: "工學院"
+        department:
+          type: string
+          description: 科系名稱
+          example: "資訊工程學系"
+        created_at:
+          type: string
+          format: date-time
+          description: 建立時間
+          example: "2024-09-25T10:50:12Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新時間
+          example: "2024-09-25T10:50:12Z"
+
+    DepartmentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          $ref: '#/components/schemas/Department'
+
+    DepartmentListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/Department'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
 
     # 分頁資訊 Schema
     PaginationInfo:

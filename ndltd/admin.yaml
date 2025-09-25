@@ -1,0 +1,991 @@
+openapi: 3.0.3
+info:
+  title: 博碩士論文系統 國圖管理端
+  description: 國家圖書館管理功能，包含公告管理、系統設定等功能
+  version: 1.0.0
+  contact:
+    name: Github 原始碼
+    url: https://github.com/chouhsiang/thesis-swagger
+
+servers:
+  - url: https://ndltdapi.ncl.edu.tw/api/v1/admin
+    description: 正式環境
+
+security:
+  - bearerAuth: []
+
+paths:
+  # 公告管理 API
+  /announcements:
+    get:
+      tags: [公告管理]
+      summary: 取得公告清單
+      description: 取得所有公告的管理清單
+      parameters:
+        - name: page
+          in: query
+          description: 分頁頁碼
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: 每頁筆數
+          schema:
+            type: integer
+            default: 20
+        - name: type
+          in: query
+          description: 公告分類篩選
+          schema:
+            type: string
+            enum: [系統公告, 最新消息, 維護通知, 功能更新]
+        - name: status
+          in: query
+          description: 公告狀態篩選
+          schema:
+            type: string
+            enum: [草稿, 已發布, 已下架]
+        - name: keyword
+          in: query
+          description: 關鍵字搜尋（標題）
+          schema:
+            type: string
+            example: "維護"
+      responses:
+        '200':
+          description: 成功取得公告清單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementListResponse'
+    
+    post:
+      tags: [公告管理]
+      summary: 新增公告
+      description: 建立一個新的公告
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnnouncementCreate'
+      responses:
+        '201':
+          description: 成功新增公告
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementResponse'
+
+  /announcements/{id}:
+    get:
+      tags: [公告管理]
+      summary: 取得單一公告
+      description: 取得指定 ID 的公告詳細資訊
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "2024011501"
+          description: 公告唯一識別碼
+      responses:
+        '200':
+          description: 成功取得公告
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementResponse'
+        '404':
+          description: 找不到指定的公告
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      tags: [公告管理]
+      summary: 更新公告
+      description: 更新指定 ID 的公告資訊
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "2024011501"
+          description: 公告唯一識別碼
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnnouncementUpdate'
+      responses:
+        '200':
+          description: 成功更新公告
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementResponse'
+        '404':
+          description: 找不到指定的公告
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    delete:
+      tags: [公告管理]
+      summary: 刪除公告
+      description: 刪除指定 ID 的公告
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "2024011501"
+          description: 公告唯一識別碼
+      responses:
+        '200':
+          description: 成功刪除公告
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到指定的公告
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # 待辦事項 API
+  /todo:
+    get:
+      tags: [待辦事項]
+      summary: 取得待辦事項清單
+      description: 取得國圖管理者的待辦事項清單
+      responses:
+        '200':
+          description: 成功取得待辦事項清單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TodoListResponse'
+
+  # 帳號管理 API
+  /users:
+    get:
+      tags: [帳號管理]
+      summary: 取得使用者清單
+      description: 取得所有使用者的帳號資訊清單
+      parameters:
+        - name: page
+          in: query
+          description: 分頁頁碼
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: 每頁筆數
+          schema:
+            type: integer
+            default: 20
+        - name: department
+          in: query
+          description: 依單位篩選
+          schema:
+            type: string
+            example: "國家圖書館"
+        - name: role
+          in: query
+          description: 依職稱篩選
+          schema:
+            type: string
+            example: "管理員"
+        - name: keyword
+          in: query
+          description: 關鍵字搜尋（姓名或email）
+          schema:
+            type: string
+            example: "王小明"
+      responses:
+        '200':
+          description: 成功取得使用者清單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserListResponse'
+    
+    post:
+      tags: [帳號管理]
+      summary: 新增使用者
+      description: 建立一個新的使用者帳號
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '201':
+          description: 成功新增使用者
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+
+  /users/{id}:
+    get:
+      tags: [帳號管理]
+      summary: 取得單一使用者資訊
+      description: 取得指定 ID 的使用者詳細資訊
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "user001"
+          description: 使用者唯一識別碼
+      responses:
+        '200':
+          description: 成功取得使用者資訊
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          description: 找不到指定的使用者
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    put:
+      tags: [帳號管理]
+      summary: 更新使用者資訊
+      description: 更新指定 ID 的使用者資訊
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "user001"
+          description: 使用者唯一識別碼
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+      responses:
+        '200':
+          description: 成功更新使用者資訊
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          description: 找不到指定的使用者
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    
+    delete:
+      tags: [帳號管理]
+      summary: 刪除使用者
+      description: 刪除指定 ID 的使用者帳號
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "user001"
+          description: 使用者唯一識別碼
+      responses:
+        '200':
+          description: 成功刪除使用者
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到指定的使用者
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # 學校使用者管理 API
+  /schoolusers:
+    get:
+      tags: [學校使用者管理]
+      summary: 取得學校使用者清單
+      description: 查詢所有學校使用者及其角色、權限設定
+      parameters:
+        - name: role
+          in: query
+          description: 角色篩選
+          schema:
+            type: string
+            enum: [管理員, 審查人員, 工讀生, 系所人員, 其他]
+        - name: department
+          in: query
+          description: 系所篩選
+          schema:
+            type: string
+            example: "資訊工程學系"
+        - name: page
+          in: query
+          description: 分頁頁碼
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: 每頁筆數
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 成功取得學校使用者清單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolUserListResponse'
+    
+    post:
+      tags: [學校使用者管理]
+      summary: 新增學校人員
+      description: 新增一位新的學校使用者並設定角色與權限
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SchoolUserCreate'
+      responses:
+        '201':
+          description: 成功新增學校人員
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolUserResponse'
+
+  /schoolusers/{userId}:
+    get:
+      tags: [學校使用者管理]
+      summary: 取得學校使用者資訊
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "user001"
+      responses:
+        '200':
+          description: 成功取得學校使用者資訊
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolUserResponse'
+    
+    put:
+      tags: [學校使用者管理]
+      summary: 編輯學校使用者權限
+      description: 更新學校使用者角色與權限
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "user001"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SchoolUserUpdate'
+      responses:
+        '200':
+          description: 成功更新學校使用者資訊
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SchoolUserResponse'
+    
+    delete:
+      tags: [學校使用者管理]
+      summary: 刪除學校使用者
+      description: 移除學校使用者帳號
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            example: "user001"
+      responses:
+        '200':
+          description: 成功刪除學校使用者
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # 公告相關 Schema
+    Announcement:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 公告唯一識別碼
+          example: "2024011501"
+        title:
+          type: string
+          description: 公告標題
+          example: "系統維護公告"
+        type:
+          type: string
+          description: 公告分類
+          enum: [系統公告, 最新消息, 維護通知, 功能更新]
+          example: "系統公告"
+        summary:
+          type: string
+          description: 公告摘要
+          example: "系統維護通知"
+        content:
+          type: string
+          description: 完整公告內容
+          example: "系統將於 2024-01-15 進行維護，維護期間系統將暫停服務..."
+        status:
+          type: string
+          description: 公告狀態
+          enum: [草稿, 已發布, 已下架]
+          example: "已發布"
+        date:
+          type: string
+          format: date
+          description: 公告日期
+          example: "2024-01-15"
+        publish_date:
+          type: string
+          format: date-time
+          description: 發布時間
+          example: "2024-01-15T10:30:00Z"
+        created_at:
+          type: string
+          format: date-time
+          description: 建立時間
+          example: "2024-01-15T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新時間
+          example: "2024-01-15T10:30:00Z"
+        author:
+          type: string
+          description: 發布者
+          example: "系統管理員"
+
+    AnnouncementCreate:
+      type: object
+      required: [title, type, summary, content]
+      properties:
+        title:
+          type: string
+          description: 公告標題
+          example: "系統維護公告"
+        type:
+          type: string
+          description: 公告分類
+          enum: [系統公告, 最新消息, 維護通知, 功能更新]
+          example: "系統公告"
+        summary:
+          type: string
+          description: 公告摘要
+          example: "系統維護通知"
+        content:
+          type: string
+          description: 完整公告內容
+          example: "系統將於 2024-01-15 進行維護，維護期間系統將暫停服務..."
+        date:
+          type: string
+          format: date
+          description: 公告日期
+          example: "2024-01-15"
+        publish_date:
+          type: string
+          format: date-time
+          description: 發布時間
+          example: "2024-01-15T10:30:00Z"
+        author:
+          type: string
+          description: 發布者
+          example: "系統管理員"
+
+    AnnouncementUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          description: 公告標題
+          example: "系統維護公告"
+        type:
+          type: string
+          description: 公告分類
+          enum: [系統公告, 最新消息, 維護通知, 功能更新]
+          example: "系統公告"
+        summary:
+          type: string
+          description: 公告摘要
+          example: "系統維護通知"
+        content:
+          type: string
+          description: 完整公告內容
+          example: "系統將於 2024-01-15 進行維護，維護期間系統將暫停服務..."
+        status:
+          type: string
+          description: 公告狀態
+          enum: [草稿, 已發布, 已下架]
+          example: "已發布"
+        date:
+          type: string
+          format: date
+          description: 公告日期
+          example: "2024-01-15"
+        publish_date:
+          type: string
+          format: date-time
+          description: 發布時間
+          example: "2024-01-15T10:30:00Z"
+        author:
+          type: string
+          description: 發布者
+          example: "系統管理員"
+
+    AnnouncementResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          $ref: '#/components/schemas/Announcement'
+
+    AnnouncementListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/Announcement'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    # 待辦事項相關 Schema
+    TodoListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            type: object
+          example: []
+
+    # 帳號管理相關 Schema
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 使用者唯一識別碼
+          example: "user001"
+        email:
+          type: string
+          format: email
+          description: 電子郵件
+          example: "admin@ncl.edu.tw"
+        name:
+          type: string
+          description: 姓名
+          example: "王小明"
+        department:
+          type: string
+          description: 單位
+          example: "國家圖書館"
+        position:
+          type: string
+          description: 職稱
+          example: "系統管理員"
+        permissions:
+          type: array
+          items:
+            type: string
+          description: 權限清單
+          example: ["公告管理", "帳號管理", "系統設定"]
+        status:
+          type: string
+          description: 帳號狀態
+          enum: [啟用, 停用, 鎖定]
+          example: "啟用"
+        last_login:
+          type: string
+          format: date-time
+          description: 最後登入時間
+          example: "2024-09-25T10:58:56Z"
+        created_at:
+          type: string
+          format: date-time
+          description: 建立時間
+          example: "2024-09-25T10:58:56Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: 更新時間
+          example: "2024-09-25T10:58:56Z"
+
+    UserCreate:
+      type: object
+      required: [email, name, department, position]
+      properties:
+        email:
+          type: string
+          format: email
+          description: 電子郵件
+          example: "admin@ncl.edu.tw"
+        name:
+          type: string
+          description: 姓名
+          example: "王小明"
+        department:
+          type: string
+          description: 單位
+          example: "國家圖書館"
+        position:
+          type: string
+          description: 職稱
+          example: "系統管理員"
+        permissions:
+          type: array
+          items:
+            type: string
+          description: 權限清單
+          example: ["公告管理", "帳號管理"]
+        password:
+          type: string
+          description: 初始密碼
+          example: "temp123456"
+
+    UserUpdate:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          description: 電子郵件
+          example: "admin@ncl.edu.tw"
+        name:
+          type: string
+          description: 姓名
+          example: "王小明"
+        department:
+          type: string
+          description: 單位
+          example: "國家圖書館"
+        position:
+          type: string
+          description: 職稱
+          example: "系統管理員"
+        permissions:
+          type: array
+          items:
+            type: string
+          description: 權限清單
+          example: ["公告管理", "帳號管理", "系統設定"]
+        status:
+          type: string
+          description: 帳號狀態
+          enum: [啟用, 停用, 鎖定]
+          example: "啟用"
+
+    UserResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          $ref: '#/components/schemas/User'
+
+    UserListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    # 學校使用者管理相關 Schema
+    SchoolUser:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "u123456"
+        name:
+          type: string
+          example: "王頌華"
+        email:
+          type: string
+          example: "abc1221@gmail.com"
+        role:
+          type: string
+          enum: [管理員, 審查人員, 工讀生, 系所人員, 其他]
+          example: "管理員"
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchoolPermission'
+
+    SchoolUserCreate:
+      type: object
+      required: [name, email, role]
+      properties:
+        name:
+          type: string
+          example: "陳小明"
+        email:
+          type: string
+          example: "test@example.com"
+        role:
+          type: string
+          enum: [管理員, 審查人員, 工讀生, 系所人員, 其他]
+          example: "審查人員"
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchoolPermission'
+
+    SchoolUserUpdate:
+      type: object
+      properties:
+        role:
+          type: string
+          enum: [管理員, 審查人員, 工讀生, 系所人員, 其他]
+          example: "工讀生"
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchoolPermission'
+
+    SchoolPermission:
+      type: object
+      properties:
+        name:
+          type: string
+          description: 權限名稱
+          example: "研究生論文審查"
+        level:
+          type: string
+          description: 權限層級
+          enum: [viewer, editor]
+          example: "editor"
+
+    SchoolUserResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          $ref: '#/components/schemas/SchoolUser'
+
+    SchoolUserListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/SchoolUser'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    # 通用回應 Schema
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: object
+          properties:
+            message:
+              type: string
+              example: "操作成功完成"
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+                example: "not_found"
+              message:
+                type: string
+                example: "找不到指定的公告"
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: object
+          example: null
+
+    # 分頁資訊 Schema
+    PaginationInfo:
+      type: object
+      properties:
+        page:
+          type: integer
+          description: 當前頁碼
+          example: 1
+        per_page:
+          type: integer
+          description: 每頁筆數
+          example: 20
+        count:
+          type: integer
+          description: 當前頁面筆數
+          example: 20
+        total_count:
+          type: integer
+          description: 總筆數
+          example: 156
+        total_pages:
+          type: integer
+          description: 總頁數
+          example: 8
