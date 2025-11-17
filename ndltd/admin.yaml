@@ -2139,75 +2139,80 @@ components:
       properties:
         id:
           type: string
-          description: 使用者唯一識別碼
-          example: "user001"
+          format: uuid
+          description: 唯一識別碼
+          example: "1c284ed8-b96f-465a-974b-66a5b83e7a7a"
+        name:
+          type: string
+          description: 姓名
+          example: "王小明"
         email:
           type: string
           format: email
           description: 電子郵件
           example: "admin@ncl.edu.tw"
-        name:
+        password_hash:
           type: string
-          description: 姓名
-          example: "王小明"
-        department:
-          type: string
-          description: 單位
-          example: "國家圖書館"
+          description: 密碼雜湊
+          example: "$2a$10$xJw..."
         position:
           type: string
           description: 職稱
           example: "系統管理員"
         permissions:
-          type: array
-          items:
-            type: string
-          description: 權限清單
-          example: ["公告管理", "帳號管理", "系統設定"]
-        status:
-          type: string
-          description: 帳號狀態
-          enum: [啟用, 停用, 鎖定]
-          example: "啟用"
+          type: object
+          description: 權限設定
+          example: {"users": "editor", "accounts": "viewer"}
+        enable:
+          type: boolean
+          description: 啟用狀態
+          example: true
         last_login:
           type: string
           format: date-time
           description: 最後登入時間
-          example: "2024-09-25T10:58:56Z"
+          example: "2025-10-08T14:30:45"
         created_at:
           type: string
           format: date-time
           description: 建立時間
-          example: "2024-09-25T10:58:56Z"
+          example: "2025-01-15T09:00:00"
         updated_at:
           type: string
           format: date-time
           description: 更新時間
-          example: "2024-09-25T10:58:56Z"
+          example: "2025-10-08T15:20:10"
 
     UserCreate:
       type: object
-      required: [email, name, department, position]
+      required: [email, name, position]
       properties:
+        name:
+          type: string
+          description: 姓名
+          example: "王小明"
         email:
           type: string
           format: email
           description: 電子郵件
           example: "admin@ncl.edu.tw"
-        name:
+        password:
           type: string
-          description: 姓名
-          example: "王小明"
-        department:
-          type: string
-          description: 單位
-          example: "國家圖書館"
+          format: password
+          description: 密碼
+          example: "P@ssw0rd123"
         position:
           type: string
           description: 職稱
           example: "系統管理員"
         permissions:
-          type: array
+          type: object
+          description: 權限設定
+          example: {"users": "editor", "accounts": "viewer"}
+        enable:
+          type: boolean
+          description: 啟用狀態
+          example: true
           items:
             type: string
           description: 權限清單
