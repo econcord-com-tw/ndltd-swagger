@@ -108,7 +108,7 @@ info:
   version: 1.0.0
   contact:
     name: Github 原始碼
-    url: https://github.com/chouhsiang/thesis-swagger
+    url: https://github.com/econcord-com-tw/ndltd-swagger
 
 servers:
   - url: https://example.com/api/v1
