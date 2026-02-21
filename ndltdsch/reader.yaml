@@ -1,7 +1,9 @@
 openapi: 3.0.3
 info:
-  title: 博碩士論文系統 讀者端
-  description: 
+  title: 大學論文系統 校內檢索端（讀者端）
+  description: |
+    校內檢索端 API，對應設計稿（ndltdsch/reader-figma）：A09 校內檢索首頁、A10 檢索結果列（選取、下載全文、引用格式）、
+    A11 一般學術論文書目資料、A12 策展主題列表與論文列表、A13 排行統計、A14 論文收藏列表。
   version: 1.0.0
   contact:
     name: Github 原始碼
@@ -18,7 +20,9 @@ paths:
     get:
       tags: [論文]
       summary: 取得單篇論文詳細內容
-      description: 依論文 id 取得詳細內容
+      description: |
+        依論文 id 取得單篇論文完整書目與詳情，對應設計稿 A11 一般學術論文書目資料頁。含標題、作者、指導教授、
+        學校系所、摘要關鍵字、目次、參考文獻等；頁面上「下載全文」「引用格式」等由各自功能或 API 支援。
       parameters:
         - name: id
           in: path
@@ -55,7 +59,9 @@ paths:
     get:
       tags: [論文]
       summary: 搜尋論文
-      description: 依多種條件（含進階檢索）搜尋論文，回傳論文列表
+      description: |
+        對應設計稿 A09 校內檢索首頁與 A10 檢索結果列。依關鍵字、學校、作者、學位、年度、是否有全文等條件搜尋校內論文，
+        回傳分頁列表；檢索結果列可選取、下載全文、引用格式等。
       parameters:
         - name: keyword
           in: query
@@ -83,7 +89,7 @@ paths:
             enum: [碩士, 博士, 其他]
         - name: year
           in: query
-          description: 年度
+          description: 年度（民國）
           schema:
             type: integer
             example: 113
@@ -100,9 +106,22 @@ paths:
             type: string
             enum: [viewCount, downloadCount, year, relevance]
             default: relevance
+        - name: page
+          in: query
+          description: 分頁頁碼（預設為 1）
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: 每頁筆數（預設為 10，最大 100）
+          schema:
+            type: integer
+            default: 10
+            maximum: 100
         - name: limit
           in: query
-          description: 限制回傳最大筆數（預設 10，最大 100）
+          description: 限制回傳最大筆數（預設 10，最大 100）；與 page/per_page 擇一使用
           schema:
             type: integer
             default: 10
@@ -120,7 +139,8 @@ paths:
     get:
       tags: [主題策展]
       summary: 取得主題策展列表
-      description: 取得所有主題策展的列表，包含主題名稱、圖示和說明
+      description: |
+        取得所有主題策展列表，對應設計稿 A12-1 策展主題列表。含主題名稱、圖示、說明，可依分類（熱門主題、學科領域、時事議題、特色研究）與精選篩選。
       parameters:
         - name: page
           in: query
@@ -162,7 +182,8 @@ paths:
     get:
       tags: [主題策展]
       summary: 取得主題策展詳細內容
-      description: 依策展 ID 取得詳細內容，包含該主題下的所有論文
+      description: |
+        依策展 ID 取得主題詳細內容與該主題下論文列表，對應設計稿 A12-2 策展主題論文列表。支援分頁與排序（瀏覽數、下載數、年度、相關性、精選）。
       parameters:
         - name: id
           in: path
@@ -206,7 +227,7 @@ paths:
     get:
       tags: [檢索歷史]
       summary: 取得檢索歷史
-      description: 取得使用者的搜尋歷史記錄，按時間倒序排列
+      description: 取得登入使用者之搜尋歷史記錄，按時間倒序排列。需登入。
       security:
         - bearerAuth: []
       parameters:
@@ -238,7 +259,8 @@ paths:
     get:
       tags: [收藏管理]
       summary: 我的收藏
-      description: 取得使用者收藏的論文列表
+      description: |
+        取得登入使用者之收藏論文列表，對應設計稿 A14 論文收藏列表（A14-1 尚未收藏、A14-2 已有收藏、A14-3 尚未綁證）。需登入。
       security:
         - bearerAuth: []
       parameters:
@@ -266,7 +288,7 @@ paths:
     post:
       tags: [收藏管理]
       summary: 新增一筆收藏
-      description: 新增一篇論文到我的收藏
+      description: 新增一篇論文到目前使用者的收藏，對應檢索結果或論文詳情頁之「加入收藏」。需登入。
       security:
         - bearerAuth: []
       requestBody:
@@ -293,7 +315,7 @@ paths:
     delete:
       tags: [收藏管理]
       summary: 刪除一筆收藏
-      description: 刪除一篇已收藏的論文
+      description: 自收藏中移除指定論文。需登入。
       security:
         - bearerAuth: []
       parameters:
@@ -316,7 +338,7 @@ paths:
     get:
       tags: [排行榜]
       summary: 取得學校熱門排行榜
-      description: 取得各校熱門論文排行榜，支援排行類型、年度與筆數限制
+      description: 取得各校熱門論文排行榜，對應設計稿 A13 排行統計。支援排行類型（全文授權/被引用/被點閱/下載）、年度與筆數限制。
       parameters:
         - name: type
           in: query
@@ -351,7 +373,7 @@ paths:
     get:
       tags: [統計資訊]
       summary: 取得論文統計資訊
-      description: 取得全站論文總數、參與學校數、開放取用論文數、累計下載數、授權率等統計資料
+      description: 取得校內（或全站）論文總數、參與學校數、開放取用數、累計下載數、授權率等統計資料，供首頁或統計區塊顯示。
       responses:
         '200':
           description: 成功取得統計資訊

@@ -1,7 +1,9 @@
 openapi: 3.0.3
 info:
   title: 博碩士論文系統 國圖管理端
-  description: 國家圖書館管理功能，包含公告管理、系統設定等功能
+  description: |
+    國圖管理端 API，對應設計稿（ndltd/admin-figma）：M01 首頁、M02 人員權限管理（新增/編輯）、M03 學校帳號與系所管理、
+    M04 論文書目管理、M05 紙本論文送存作業（點收、書目檢核、書目審查）、M06 論文統計報表。
   version: 1.0.0
   contact:
     name: Github 原始碼
@@ -20,7 +22,7 @@ paths:
     post:
       tags: [認證]
       summary: 使用者登入
-      description: 國圖管理員登入系統
+      description: 國圖管理員登入系統，取得 JWT 後可操作 M01～M06 各功能。
       security: []
       requestBody:
         required: true
@@ -46,7 +48,7 @@ paths:
     post:
       tags: [認證]
       summary: 使用者登出
-      description: 國圖管理員登出系統
+      description: 國圖管理員登出，使當前 JWT 失效。
       responses:
         '200':
           description: 登出成功
@@ -59,7 +61,7 @@ paths:
     get:
       tags: [認證]
       summary: 取得當前使用者資訊
-      description: 取得目前登入的國圖管理員資訊
+      description: 取得目前登入的國圖管理員資訊，供 M01 首頁或 header 顯示。
       responses:
         '200':
           description: 成功取得使用者資訊
@@ -79,7 +81,7 @@ paths:
     get:
       tags: [公告管理]
       summary: 取得公告清單
-      description: 取得所有公告的管理清單
+      description: 取得所有公告之管理清單，可依分類、狀態、關鍵字篩選。
       parameters:
         - name: page
           in: query
@@ -227,7 +229,7 @@ paths:
     get:
       tags: [待辦事項]
       summary: 取得待辦事項清單
-      description: 取得國圖管理者的待辦事項清單
+      description: 取得國圖管理者之待辦事項清單，對應 M01 首頁工作台。
       responses:
         '200':
           description: 成功取得待辦事項清單
@@ -241,7 +243,7 @@ paths:
     get:
       tags: [帳號管理]
       summary: 取得使用者清單
-      description: 取得所有使用者的帳號資訊清單
+      description: 取得所有使用者之帳號資訊清單，對應設計稿 M02 人員權限管理。可依單位、職稱、關鍵字篩選。
       parameters:
         - name: page
           in: query
@@ -505,6 +507,7 @@ paths:
                 $ref: '#/components/schemas/SuccessResponse'
 
   # 論文管理 API
+  # 論文書目管理 API（M04）
   /theses:
     get:
       tags: [論文管理]
@@ -893,7 +896,7 @@ paths:
     get:
       tags: [學校管理]
       summary: 取得學校清單
-      description: 取得所有學校的管理清單
+      description: 取得所有學校之管理清單，對應設計稿 M03 學校帳號與系所管理。
       parameters:
         - name: page
           in: query
@@ -1047,7 +1050,7 @@ paths:
     get:
       tags: [科系管理]
       summary: 取得科系清單
-      description: 取得所有科系的管理清單
+      description: 取得所有科系之管理清單，對應設計稿 M03 學校帳號與系所管理、M03-2 系所代碼管理。
       parameters:
         - name: page
           in: query
@@ -1799,7 +1802,7 @@ paths:
     get:
       tags: [靜態資料]
       summary: 取得論文統計資料
-      description: 取得 API 金鑰的使用統計資料
+      description: 取得論文或 API 相關之統計資料，對應設計稿 M06 論文統計報表。
       parameters:
         - name: api_key_id
           in: query
@@ -2213,15 +2216,6 @@ components:
           type: boolean
           description: 啟用狀態
           example: true
-          items:
-            type: string
-          description: 權限清單
-          example: ["公告管理", "帳號管理"]
-        password:
-          type: string
-          description: 初始密碼
-          example: "temp123456"
-
     UserUpdate:
       type: object
       properties:

@@ -1,7 +1,9 @@
 openapi: 3.0.3
 info:
   title: 大學論文系統 學生端
-  description: 學生端論文上傳、個人資料管理、常見問答等功能 API
+  description: |
+    學生端 API，對應設計稿（ndltdsch/student-figma）之流程：首頁與五步驟進度、論文上傳（檔案與文字資料）、
+    授權設定（含電子簽章/簽名上傳）、退件紀錄與詳情、論文更換申請、常見問答與文件下載、問題回報、待辦階段。
   version: 1.0.0
   contact:
     name: Github 原始碼
@@ -13,12 +15,112 @@ servers:
 
 paths:
   # 個人資料管理 API
- 
+  /profile:
+    get:
+      tags: [個人資料]
+      summary: 取得登入學生資料
+      description: 取得目前登入學生之姓名、學校、系所等，供首頁「歡迎回來」與基本資訊顯示
+      responses:
+        '200':
+          description: 成功取得個人資料
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  result:
+                    $ref: '#/components/schemas/User'
+
+  /notifications:
+    get:
+      tags: [個人資料]
+      summary: 取得通知列表
+      description: |
+        取得學生之系統通知列表，對應設計稿 header 右側「鈴鐺」圖示。
+        可依分頁與未讀篩選，用於通知中心或下拉列表。
+      parameters:
+        - name: page
+          in: query
+          description: 分頁頁碼（預設為 1）
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: 每頁筆數（預設為 20）
+          schema:
+            type: integer
+            default: 20
+        - name: unread_only
+          in: query
+          description: 是否僅回傳未讀通知
+          schema:
+            type: boolean
+            default: false
+      responses:
+        '200':
+          description: 成功取得通知列表
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  result:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                          example: "N20250731001"
+                        title:
+                          type: string
+                          example: "論文審核結果通知"
+                        content:
+                          type: string
+                        read_at:
+                          type: string
+                          format: date-time
+                          nullable: true
+                        created_at:
+                          type: string
+                          format: date-time
+
   # 論文上傳管理 API
   /thesis/uploadFile:
     post:
       tags: [論文上傳]
       summary: 上傳論文主檔與補充資料
+      description: |
+        對應「上傳資料」流程。可上傳電子論文、代替論文、論文相似檢測結果等。
+        設計稿步驟一：選擇論文類型（碩博士論文/代替碩博士論文）、論文類別（藝術類/應用科技類/體育運動類/專業實務類）、
+        電子論文檔案、代替論文（可多檔）、論文相似檢測結果（建議 1–2 頁、500KB 內）。
       requestBody:
         required: true
         content:
@@ -26,16 +128,34 @@ paths:
             schema:
               type: object
               properties:
+                thesisType:
+                  type: string
+                  description: 論文類型（步驟一選擇）
+                  enum: [碩博士論文, 代替碩博士論文]
+                thesisCategory:
+                  type: string
+                  description: 論文類別（代替論文時選填）
+                  enum: [藝術類, 應用科技類, 體育運動類, 專業實務類]
                 thesisFile:
                   type: string
                   format: binary
-                  description: 論文 PDF 主檔
+                  description: 電子論文檔案（PDF 主檔）
+                alternativeFiles:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+                  description: 代替論文檔案（可多檔）
+                similarityReportFile:
+                  type: string
+                  format: binary
+                  description: 論文相似檢測結果（建議 1–2 頁、500KB 內）
                 attachments:
                   type: array
                   items:
                     type: string
                     format: binary
-                  description: 補充資料（圖片、程式碼、附檔等）
+                  description: 其他補充資料（圖片、程式碼、附檔等）
       responses:
         '200':
           description: 上傳成功
@@ -60,15 +180,18 @@ paths:
                   result:
                     type: object
                     properties:
-                      uploadId: 
+                      uploadId:
                         type: string
+                        description: 上傳批次或檔案識別碼，供後續 submit/authorization 關聯使用
                         example: "abc123"
 
   /thesis/submit:
     post:
       tags: [論文上傳]
       summary: 上傳論文相關文字資料
-      description: 上傳學籍資料、論文資料、摘要、目錄、參考文獻等
+      description: |
+        對應「上傳資料」流程中「欄位確認」步驟後之送出。上傳學籍資料、論文基本資料（中英文標題、指導教授、口試委員、語言、頁數、參考文獻數）、
+        中英文摘要與關鍵字、目錄（toc）、參考文獻（references）。設計稿可由系統 AI 自檔案擷取部分欄位，學生確認或修正後由此 API 送出。
       requestBody:
         required: true
         content:
@@ -78,83 +201,95 @@ paths:
               properties:
                 student:
                   type: object
+                  description: 學籍資料（對應設計稿學籍／基本資料區塊）
                   properties:
-                    school: 
+                    school:
                       type: string
+                      description: 學校名稱
                       example: "國立台北科技大學"
-                    department: 
+                    department:
                       type: string
+                      description: 系所
                       example: "資訊工程系"
-                    degree: 
+                    degree:
                       type: string
+                      description: 學位（碩士/博士）
                       example: "碩士"
-                    academicYear: 
+                    academicYear:
                       type: string
+                      description: 學年度（如 113年度）
                       example: "113年度"
-                    nameZh: 
+                    nameZh:
                       type: string
+                      description: 中文姓名
                       example: "陳小明"
-                    nameEn: 
+                    nameEn:
                       type: string
+                      description: 英文姓名
                       example: "CHEN, SIAO-MING"
-                    studentId: 
+                    studentId:
                       type: string
+                      description: 學號
                       example: "M110123456"
                 thesis:
                   type: object
+                  description: 論文基本資料（對應設計稿論文標題、指導教授、口試委員、頁數等）
                   properties:
-                    titleZh: 
+                    titleZh:
                       type: string
+                      description: 論文中文標題
                       example: "我的論文題目"
-                    titleEn: 
+                    titleEn:
                       type: string
+                      description: 論文英文標題
                       example: "My thesis title"
-                    advisor: 
+                    advisor:
                       type: string
                       description: 指導教授中文姓名
-                    advisorEn: 
+                    advisorEn:
                       type: string
                       description: 指導教授英文姓名
-                    committee: 
+                    committee:
                       type: array
-                      items: 
+                      items:
                         type: string
                       description: 口試委員名單
-                    language: 
+                    language:
                       type: string
                       description: 論文語言
-                    pageCount: 
+                    pageCount:
                       type: integer
                       description: 論文頁數
-                    referenceCount: 
+                    referenceCount:
                       type: integer
                       description: 參考文獻數量
                 abstract:
                   type: object
+                  description: 摘要及關鍵字（對應設計稿摘要、關鍵字區塊）
                   properties:
-                    abstractZh: 
+                    abstractZh:
                       type: string
                       description: 中文摘要
-                    abstractEn: 
+                    abstractEn:
                       type: string
                       description: 英文摘要
-                    keywordsZh: 
+                    keywordsZh:
                       type: array
-                      items: 
+                      items:
                         type: string
                       description: 中文關鍵字
-                    keywordsEn: 
+                    keywordsEn:
                       type: array
-                      items: 
+                      items:
                         type: string
                       description: 英文關鍵字
                 toc:
                   type: string
-                  description: 目錄的 markdown 格式
+                  description: 目錄（設計稿目次，可為 markdown 或純文字）
                   example: "目錄的 markdown"
                 references:
                   type: string
-                  description: 參考文獻的 markdown 格式
+                  description: 參考文獻（設計稿參考文獻，可為 markdown 或純文字）
                   example: "參考文獻的 markdown"
       responses:
         '200':
@@ -188,6 +323,7 @@ paths:
     post:
       tags: [論文上傳]
       summary: 設定論文授權與公開方式
+      description: 對應「授權設定」頁。可設定學校/國圖/第三方授權、公開方式（立即/延後）；設計稿含電子簽章、簽名上傳，可選填 signature 或 signature_file。
       requestBody:
         required: true
         content:
@@ -225,12 +361,18 @@ paths:
                       example: "deny"
                 publishSetting:
                   type: object
-                  description: 延伸公開設定
+                  description: 論文公開方式（設計稿：立即公開、延後公開、不公開）
                   properties:
                     mode:
                       type: string
-                      enum: ["immediate", "delayed"]
+                      enum: ["immediate", "delayed", "not_public"]
                       example: "immediate"
+                signature:
+                  type: string
+                  description: 電子簽章文字或 base64 簽名圖（依實作擇一）
+                signature_file_id:
+                  type: string
+                  description: 已上傳之簽名檔案 ID（若採簽名上傳流程）
       responses:
         '200':
           description: 儲存成功
@@ -262,11 +404,14 @@ paths:
   /thesis/rejections:
     get:
       tags: [論文審查]
-      summary: 取得退件理由
-      description: 取得使用者論文退件的歷史紀錄，包含退件日期、審查員、退件原因與標記
+      summary: 取得退件紀錄列表
+      description: |
+        取得使用者論文退件之歷史紀錄列表，對應設計稿「退件紀錄」按鈕進入之「審查紀錄/退件紀錄」頁。
+        每筆含退件日期、審查員、退件原因與狀態；回傳之 id 可供 GET /thesis/rejections/{id} 查詢單筆詳情（退件細節、查看位置）。
+        處理退件後之「重新上傳」請再呼叫 POST /thesis/uploadFile 或 /thesis/submit。
       responses:
         '200':
-          description: 成功回傳退件紀錄
+          description: 成功回傳退件紀錄列表
           content:
             application/json:
               schema:
@@ -290,48 +435,137 @@ paths:
                     items:
                       type: object
                       properties:
+                        id:
+                          type: string
+                          description: 退件紀錄唯一識別碼，用於取得詳情 GET /thesis/rejections/{id}
+                          example: "REJ-20250718-001"
                         date:
                           type: string
                           format: date
+                          description: 退件/審查日期
                           example: "2025-07-18"
                         reviewer:
                           type: string
+                          description: 審查員（含單位）
                           example: "國家圖書館 王審查員"
                         reasons:
                           type: array
                           items:
                             type: string
+                          description: 退件原因條列
                           example:
                             - 論文資料不完整：缺少中文標題、英文標題、教授名稱、目錄、頁數或參考文獻
                             - 頁面標記錯誤
                         notes:
                           type: string
+                          description: 審查備註或補充說明
                           example: "輸入錯誤原因輸入錯誤原因輸入錯誤原因..."
                         status:
                           type: string
                           enum: [已退件, 已核准]
                           example: 已退件
 
+  /thesis/rejections/{id}:
+    get:
+      tags: [論文審查]
+      summary: 取得單筆退件詳情
+      description: 取得指定退件紀錄的詳細內容，含退件原因摘要、詳述、退件細節列表（每項描述與查看位置），對應「審查退件紀錄」頁單筆展開內容
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 退件紀錄唯一識別碼
+          schema:
+            type: string
+            example: "REJ-20250718-001"
+      responses:
+        '200':
+          description: 成功取得退件詳情
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  result:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: "REJ-20250718-001"
+                      date:
+                        type: string
+                        format: date
+                        example: "2025-07-18"
+                      reviewer:
+                        type: string
+                        example: "國家圖書館 王審查員"
+                      status:
+                        type: string
+                        enum: [已退件, 已核准]
+                        example: 已退件
+                      reason_summary:
+                        type: string
+                        description: 退件原因摘要
+                        example: "基本資料填寫不完整"
+                      reason_detail:
+                        type: string
+                        description: 退件原因詳述
+                        example: "您提交的論文資料不完整，請確認以下必要資訊是否齊全：中文標題、英文標題、指導教授姓名、目錄、頁數以及參考文獻完整度。"
+                      last_submitted_at:
+                        type: string
+                        format: date
+                        description: 此論文上次送出最新版本日期
+                        example: "2025-07-21"
+                      rejection_items:
+                        type: array
+                        description: 退件細節列表（每項可含查看位置）
+                        items:
+                          type: object
+                          properties:
+                            description:
+                              type: string
+                              example: "由審查人員描述論文內容的具體錯誤"
+                            location_ref:
+                              type: string
+                              description: 查看位置（頁碼或錨點）
+                              example: "p.12"
+
   /thesis/replace:
     post:
       tags: [論文審查]
       summary: 提交論文更換/補充申請
-      description: 學生可提交修改內容簡述與指導教授同意證明文件，送交系統審核，成功後可重新上傳論文檔案
+      description: |
+        對應設計稿「申請論文更換」→「更換論文說明」頁。學生須未正式畢業、檢附指導教授同意抽換之證明文件，
+        填寫修改內容簡述並上傳證明文件（PDF、JPG、PNG）。送出後由圖書館員審核，通過後系統開放重新上傳論文並以 email 通知。
       requestBody:
         required: true
         content:
           multipart/form-data:
             schema:
               type: object
+              required: [description]
               properties:
                 description:
                   type: string
-                  description: 修改內容簡述
+                  description: 修改內容簡述（設計稿「修改內容簡述」欄位，必填）
                   example: 修正論文標題與補充缺少的參考文獻
                 approvalFile:
                   type: string
                   format: binary
-                  description: 指導教授同意證明文件 (PDF, JPG, PNG)
+                  description: 指導教授同意抽換之證明文件、對話紀錄或申請書（設計稿支援 PDF, JPG, PNG）
       responses:
         '200':
           description: 申請成功
@@ -372,9 +606,12 @@ paths:
     get:
       tags: [靜態資源]
       summary: 取得常見問答清單
+      description: |
+        取得常見問答列表，對應設計稿首頁下方「常見問答」tab。內容包含審核、上傳流程、紙本繳交、退件等 FAQ，
+        可展開單一問題顯示 answer。
       responses:
         '200':
-          description: FAQ 列表
+          description: 成功回傳常見問答列表
           content:
             application/json:
               schema:
@@ -412,9 +649,12 @@ paths:
     get:
       tags: [靜態資源]
       summary: 取得所有文件類別及其檔案清單
+      description: |
+        取得文件類別與其下檔案清單，對應設計稿首頁「文件下載」tab。包含論文格式（論文範本 docx/odt）、
+        建檔流程、上傳準備說明等，各檔案提供 url 供下載。
       responses:
         '200':
-          description: 文件類別與檔案清單
+          description: 成功回傳文件類別與檔案清單
           content:
             application/json:
               schema:
@@ -443,6 +683,7 @@ paths:
                           example: 1
                         name:
                           type: string
+                          description: 類別名稱（如論文格式、建檔流程、上傳準備說明）
                           example: "上傳說明"
                         files:
                           type: array
@@ -457,6 +698,7 @@ paths:
                                 example: "論文上傳說明.pdf"
                               url:
                                 type: string
+                                description: 檔案下載連結
                                 example: "https://example.com/files/101/download"
 
   # 問題回報 API
@@ -464,7 +706,7 @@ paths:
     get:
       tags: [問題回報]
       summary: 取得問題回報列表
-      description: 取得使用者提交的問題回報列表
+      description: 取得目前登入學生提交之問題回報列表，可依狀態篩選與分頁，供「問題回報」或聯絡客服流程使用。
       parameters:
         - name: status
           in: query
@@ -513,7 +755,7 @@ paths:
     post:
       tags: [問題回報]
       summary: 提交問題回報
-      description: 學生提交新的問題回報
+      description: 學生提交一筆新的問題回報，需填寫問題描述（content），可選填分類（系統問題、操作問題、其他）。
       requestBody:
         required: true
         content:
@@ -559,7 +801,7 @@ paths:
     get:
       tags: [問題回報]
       summary: 取得問題回報詳細內容
-      description: 依問題 ID 取得詳細內容
+      description: 依問題回報 ID 取得單筆詳細內容，含描述、分類、狀態、管理員回覆（response）與時間欄位。
       parameters:
         - name: id
           in: path
@@ -597,7 +839,10 @@ paths:
     get:
       tags: [待辦事項]
       summary: 取得目前處理階段
-      description: 取得學生論文提交的目前處理階段和待辦事項
+      description: |
+        取得學生論文提交之目前處理階段與待辦事項，對應設計稿首頁「五步驟進度條」與論文管理區狀態文案。
+        五步驟為：第一步上傳論文、第二步系統審核、第三步系所初審、第四步圖書館審核、第五步紙本繳交。
+        result.steps 供進度條顯示各步驟為「完成」「進行中」或「未開始」；stage、stage_name、description 供中央狀態說明與下一步動作。
       responses:
         '200':
           description: 成功取得處理階段資訊
@@ -621,18 +866,19 @@ paths:
                     example: []
                   result:
                     type: object
+                    description: 對應首頁五步驟進度條與論文管理狀態
                     properties:
                       stage:
                         type: integer
-                        description: 目前處理階段（1-10）
-                        example: 5
+                        description: 目前處理階段（1-10 或與 steps 對應）
+                        example: 4
                       stage_name:
                         type: string
                         description: 階段名稱
-                        example: "論文審查中"
+                        example: "圖書館審核"
                       description:
                         type: string
-                        description: 階段說明
+                        description: 階段說明（如「論文審核中，請待審核結果及通知」）
                         example: "您的論文正在進行審查，預計需要 3-5 個工作天"
                       next_action:
                         type: string
@@ -641,31 +887,53 @@ paths:
                       progress_percentage:
                         type: integer
                         description: 完成進度百分比
-                        example: 50
+                        example: 60
+                      steps:
+                        type: array
+                        description: 五步驟進度（第一步上傳論文～第五步紙本繳交），供首頁進度條顯示
+                        items:
+                          type: object
+                          properties:
+                            step_number:
+                              type: integer
+                              example: 1
+                            label:
+                              type: string
+                              example: "上傳論文"
+                            status:
+                              type: string
+                              enum: [完成, 進行中, 未開始]
+                              example: "完成"
 
 components:
   schemas:
     # 個人資料相關 Schema
     User:
       type: object
+      description: 登入學生資料，對應設計稿首頁「歡迎回來」、學校/系所標籤
       properties:
         name:
           type: string
+          description: 學生姓名
           example: 王小明
         email:
           type: string
           format: email
+          description: 聯絡信箱
           example: test@example.com
         school:
           type: string
+          description: 學校名稱
           example: 國立台灣大學
         department:
           type: string
+          description: 系所
           example: 資訊工程學系
         stage:
           type: integer
           minimum: 1
           maximum: 5
+          description: 目前所處步驟（1～5 對應五步驟進度）
           example: 4
         thesisSubmittedAt:
           type: string

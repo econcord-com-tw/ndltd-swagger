@@ -1,7 +1,9 @@
 openapi: 3.0.3
 info:
-  title: 大學論文系統 學校端
-  description: 學校管理功能，整合個人資料、人員管理、論文審核、系統設定、統計報表、送存國圖等完整功能
+  title: 大學論文系統 學校端（機構後台）
+  description: |
+    學校端管理 API，對應設計稿（ndltdsch/admin-figma）：A01 學校端最高權限/審查人員、A02 論文格式限制/欄位資訊/授權設定/退件樣板、
+    A03 人員權限管理、A04 論文書目資料管理（問題回報、紙本繳交、抽換論文、匯入）、A05 論文統計報表、A06 前台策展規劃、A07 校內系所設定、A08 送存清單。
   version: 1.0.0
   contact:
     name: Github 原始碼
@@ -19,7 +21,7 @@ paths:
     get:
       tags: [待辦事項]
       summary: 取得待辦事項清單
-      description: 取得管理者的待辦事項清單
+      description: 取得學校端管理者之待辦事項清單，供首頁或工作台顯示。
       responses:
         '200':
           description: 成功取得待辦事項清單
@@ -33,7 +35,7 @@ paths:
     get:
       tags: [系統設定]
       summary: 取得系統設定清單
-      description: 取得所有系統設定的 key-value 對
+      description: 取得所有系統設定的 key-value 對，可依 key 篩選、分頁。與 A02 等設定畫面配合使用。
       parameters:
         - name: page
           in: query
@@ -169,7 +171,7 @@ paths:
     get:
       tags: [主題策展管理]
       summary: 取得主題策展清單
-      description: 取得所有主題策展的管理清單
+      description: 取得所有主題策展之管理清單，對應設計稿 A06 前台策展規劃。可依分類、精選、狀態（草稿/已發布/已下架）篩選。
       parameters:
         - name: page
           in: query
@@ -211,7 +213,7 @@ paths:
     post:
       tags: [主題策展管理]
       summary: 新增主題策展
-      description: 建立一個新的主題策展
+      description: 建立新的主題策展，對應 A06-1 新增主題。
       requestBody:
         required: true
         content:
@@ -230,7 +232,7 @@ paths:
     get:
       tags: [主題策展管理]
       summary: 取得單一主題策展
-      description: 取得指定 ID 的主題策展詳細資訊
+      description: 取得指定 ID 的主題策展詳細資訊，對應 A06-5 編輯主題、A06-3 瀏覽主題論文。
       parameters:
         - name: id
           in: path
@@ -417,7 +419,7 @@ paths:
     get:
       tags: [退件範本管理]
       summary: 取得退件範本清單
-      description: 取得所有退件範本的清單
+      description: 取得所有退件範本清單，對應設計稿 A02-4 系統退件樣板。
       parameters:
         - name: page
           in: query
@@ -448,7 +450,7 @@ paths:
     post:
       tags: [退件範本管理]
       summary: 新增退件範本
-      description: 建立一個新的退件範本
+      description: 建立新的退件範本，對應 A02-4 退件樣板管理。
       requestBody:
         required: true
         content:
@@ -553,7 +555,7 @@ paths:
     get:
       tags: [科系管理]
       summary: 取得科系清單
-      description: 取得所有科系的清單，包含學院和科系資訊
+      description: 取得所有科系清單，對應設計稿 A07 校內系所設定。含學院、科系資訊，可依學院、關鍵字篩選。
       parameters:
         - name: page
           in: query
@@ -614,12 +616,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  # 人員管理 API (來自 users.yaml)
+  # 人員管理 API
   /users:
     get:
       tags: [人員管理]
       summary: 取得使用者清單
-      description: 查詢所有使用者及其角色、權限設定
+      description: 查詢所有使用者及其角色、權限設定，對應設計稿 A03 人員權限管理。可依角色（管理員/審查人員/系所人員等）、系所篩選。
       parameters:
         - name: role
           in: query
@@ -656,7 +658,7 @@ paths:
     post:
       tags: [人員管理]
       summary: 新增人員
-      description: 新增一位新使用者並設定角色與權限
+      description: 新增一位新使用者並設定角色與權限，對應設計稿 A03-1 新增人員跳窗。
       requestBody:
         required: true
         content:
@@ -693,7 +695,7 @@ paths:
     put:
       tags: [人員管理]
       summary: 編輯使用者權限
-      description: 更新使用者角色與權限
+      description: 更新使用者角色與權限，對應設計稿 A03-3 編輯人員。
       parameters:
         - name: userId
           in: path
@@ -736,12 +738,12 @@ paths:
 
  
 
-  # 系統設定 API (來自 settings.yaml)
+  # 論文設定 API
   /thesissettings:
     get:
       tags: [論文設定]
       summary: 取得學校論文設定
-      description: 取得學校的論文上傳與授權設定
+      description: 取得學校的論文上傳與授權設定，對應設計稿 A02 論文格式限制、A02-2 設定欄位資訊、A02-3 論文授權設定。
       responses:
         '200':
           description: 成功取得設定
@@ -753,7 +755,7 @@ paths:
     post:
       tags: [論文設定]
       summary: 建立或更新學校論文設定
-      description: 若該學校已存在設定，會覆蓋舊設定
+      description: 建立或覆蓋學校論文格式、欄位、授權等設定，對應 A02-1～A02-3。
       requestBody:
         required: true
         content:
@@ -773,7 +775,7 @@ paths:
     get:
       tags: [論文管理]
       summary: 查詢論文清單
-      description: 查詢全校論文清單，支援多種篩選條件
+      description: 查詢全校論文清單，對應設計稿 A04 論文書目資料管理。支援多種篩選條件；A04-1 問題回報、A04-2 紙本繳交、A04-3 抽換論文、A04-7 匯入等由相關 API 支援。
       parameters:
         - name: department
           in: query
@@ -863,7 +865,7 @@ paths:
     get:
       tags: [論文審核]
       summary: 查詢審核論文清單
-      description: 取得待審核或已審核的論文列表
+      description: 取得待審核或已審核的論文列表，對應設計稿 A01 審查人員、A01-1 審查人員功能。
       parameters:
         - name: keyword
           in: query
@@ -979,7 +981,7 @@ paths:
     post:
       tags: [統計報表]
       summary: 產生論文統計報表
-      description: 傳入篩選條件，系統回傳預覽資料
+      description: 傳入篩選條件產生論文統計報表，對應設計稿 A05 論文統計報表、A05-1 輸入報表條件、A05-2 瀏覽資料呈現、A05-3 匯出報表檔案。
       requestBody:
         required: true
         content:
@@ -1069,7 +1071,7 @@ paths:
     get:
       tags: [送存國圖]
       summary: 取得送存清單
-      description: 取得可送存到國家圖書館的論文清單
+      description: 取得可送存到國家圖書館的論文清單，對應設計稿 A08 送存清單。
       responses:
         '200':
           description: 成功取得送存清單

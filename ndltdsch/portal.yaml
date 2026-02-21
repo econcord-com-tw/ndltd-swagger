@@ -1,7 +1,9 @@
 openapi: 3.0.3
 info:
   title: 大學論文系統 入口頁
-  description: 提供系統入口與導航功能，包含公告查詢、統一身份認證、角色權限分流等功能
+  description: |
+    系統入口 API，對應設計稿（ndltdsch/portal-figma）A00 系統入口。提供公告查詢、統一身份認證（OAuth 登入回調）、
+    登出、取得個人資訊；登入後依角色權限分流至學生端、學校端、檢索端等。
   version: 1.0.0
   contact:
     name: Github 原始碼
@@ -17,7 +19,7 @@ paths:
     get:
       tags: [公告]
       summary: 取得公告列表
-      description: 取得公告列表，顯示短內容 summary
+      description: 取得公告列表，對應入口頁或首頁之公告區塊；顯示短內容 summary，可依 type（系統公告/最新消息）、tag 篩選。
       parameters:
         - name: page
           in: query
@@ -59,7 +61,7 @@ paths:
     get:
       tags: [公告]
       summary: 取得公告詳細內容
-      description: 依公告 id 取得完整公告內容
+      description: 依公告 id 取得完整公告內容（標題、日期、完整內文等）。
       parameters:
         - name: id
           in: path
@@ -80,7 +82,9 @@ paths:
     post:
       tags: [驗證]
       summary: OAuth 登入回調
-      description: 處理 OAuth 認證回調，完成使用者登入流程
+      description: |
+        處理 OAuth 認證回調，對應 A00 系統入口之統一身份認證。前端收到授權碼後以 code、state（及選填 redirect_uri）呼叫，
+        換取 access_token、refresh_token 與使用者資料，完成登入並依角色分流。
       security: []  # 此端點不需要認證
       requestBody:
         required: true
@@ -195,7 +199,7 @@ paths:
     post:
       tags: [驗證]
       summary: 使用者登出
-      description: 登出目前使用者，使 JWT 權杖失效
+      description: 登出目前使用者，使 JWT 權杖失效，對應入口或各端之登出操作。
       responses:
         '200':
           description: 登出成功
@@ -251,12 +255,12 @@ paths:
                     type: object
                     example: null
 
-  # 個人資料 API (來自 me.yaml)
+  # 個人資料 API
   /auth/me:
     get:
       tags: [驗證]
       summary: 取得個人資訊
-      description: 顯示目前登入使用者的基本資料
+      description: 取得目前登入使用者的基本資料（含角色、學校等），供入口頁或各端顯示登入者資訊與權限分流。
       responses:
         '200':
           description: 成功取得個人資訊

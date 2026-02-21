@@ -1,7 +1,10 @@
 openapi: 3.0.3
 info:
   title: 博碩士論文系統 讀者端
-  description: 
+  description: |
+    讀者端 API，對應設計稿（ndltd/reader-figma）：F01 首頁（基本/進階/語意檢索、排行榜、論文統計、最新公告）、
+    F03 檢索結果列與二度篩選、F04 論文詳情（摘要/目次/參考文獻、引用格式、相關論文）、F05 申請大量書目、
+    F06 排行統計、F07 我的書車與匯出書目。
   version: 1.0.0
   contact:
     name: Github 原始碼
@@ -17,7 +20,8 @@ paths:
     post:
       tags: [認證]
       summary: 使用者登入
-      description: 使用帳號密碼登入系統，取得授權令牌
+      description: |
+        使用帳號密碼登入系統，取得 JWT 授權令牌。對應設計稿中讀者登入後可使用的「我的書車」「檢索歷史」等需登入功能。
       requestBody:
         required: true
         content:
@@ -76,7 +80,7 @@ paths:
     post:
       tags: [認證]
       summary: 使用者登出
-      description: 登出系統，使當前令牌失效
+      description: 登出系統，使當前 JWT 令牌失效。
       security:
         - bearerAuth: []
       responses:
@@ -111,7 +115,7 @@ paths:
     get:
       tags: [認證]
       summary: 取得個人資訊
-      description: 顯示目前登入使用者的基本資料
+      description: 取得目前登入使用者的基本資料，供 header 個人圖示或帳號區塊顯示。
       security:
         - bearerAuth: []
       responses:
@@ -128,7 +132,9 @@ paths:
     get:
       tags: [公告]
       summary: 取得公告列表
-      description: 取得公告列表，顯示短內容 summary
+      description: |
+        取得公告列表，對應設計稿 F01 首頁下方「最新公告」區塊。可篩選「系統公告」「最新消息」、標籤（重要、新功能），
+        回傳短內容 summary，供列表顯示；詳情由 GET /announcements/{id} 取得。
       parameters:
         - name: page
           in: query
@@ -146,7 +152,7 @@ paths:
             default: 10
         - name: type
           in: query
-          description: 公告分類（系統公告、最新消息）
+          description: 公告分類（對應 tab：系統公告、最新消息）
           required: false
           schema:
             type: string
@@ -170,7 +176,7 @@ paths:
     get:
       tags: [公告]
       summary: 取得公告詳細內容
-      description: 依公告 id 取得完整公告內容
+      description: 依公告 id 取得完整公告內容（標題、日期、完整內文等），供公告詳情頁或展開顯示。
       parameters:
         - name: id
           in: path
@@ -192,7 +198,10 @@ paths:
     get:
       tags: [論文]
       summary: 取得單篇論文詳細內容
-      description: 依論文 id 取得詳細內容
+      description: |
+        依論文 id 取得單篇論文完整書目與詳情，對應設計稿 F04 論文詳情頁。含中英文標題、被引用數、指導教授/共同指導、
+        學校系所、畢業學年度、摘要與關鍵字（中英）、目次（table_of_contents）、參考文獻（references）、是否有全文/多媒體等。
+        頁面上「下載全文」「加入書車」「引用格式」「相關論文」等由各自 API 支援。
       parameters:
         - name: id
           in: path
@@ -225,65 +234,124 @@ paths:
                   result:
                     $ref: '#/components/schemas/ThesisDetail'
 
-  /theses/search:
+  /theses/{id}/citation:
     get:
       tags: [論文]
-      summary: 搜尋論文
-      description: 依多種條件（含進階檢索）搜尋論文，回傳論文列表
+      summary: 取得單篇論文引用格式
+      description: |
+        取得指定論文的引用文字，對應設計稿 F03-4、F04 論文詳情頁之「引用格式」彈窗。支援 APA、Chicago、MLA 等格式，
+        回傳 citation_text 供「複製引用」使用。
       parameters:
-        - name: keyword
-          in: query
-          description: 關鍵字（標題、摘要、關鍵字等模糊搜尋）
+        - name: id
+          in: path
+          required: true
+          description: 論文唯一識別碼
           schema:
             type: string
-            example: "Open Access"
-        - name: school
+            example: "1"
+        - name: style
           in: query
-          description: 學校名稱
+          description: 引用格式
           schema:
             type: string
-            example: "國立臺灣大學"
-        - name: author
-          in: query
-          description: 作者
+            enum: [apa, chicago, mla]
+            default: apa
+      responses:
+        '200':
+          description: 成功取得引用格式
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  result:
+                    type: object
+                    properties:
+                      style:
+                        type: string
+                        example: "apa"
+                      citation_text:
+                        type: string
+                        description: 該格式的引用內文
+
+  /theses/{id}/related:
+    get:
+      tags: [論文]
+      summary: 取得相關論文
+      description: |
+        取得與指定論文相關的推薦論文列表，對應設計稿 F04 論文詳情頁右側「相關論文」區塊。每筆含標題、作者、學校、年度等，
+        可點「查看詳情」導向 GET /theses/{id}。
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 論文唯一識別碼
           schema:
             type: string
-            example: "王小明"
-        - name: degree
-          in: query
-          description: 學位（碩士/博士/其他）
-          schema:
-            type: string
-            enum: [碩士, 博士, 其他]
-        - name: year
-          in: query
-          description: 年度
-          schema:
-            type: integer
-            example: 113
-        - name: fullTextAvailable
-          in: query
-          description: 是否有全文
-          schema:
-            type: boolean
-            example: true
-        - name: sort
-          in: query
-          description: 排序方式
-          schema:
-            type: string
-            enum: [viewCount, downloadCount, year, relevance]
-            default: relevance
+            example: "1"
         - name: limit
           in: query
-          description: 限制回傳最大筆數（預設 10，最大 100）
+          description: 回傳筆數上限（預設 10）
           schema:
             type: integer
             default: 10
-            maximum: 100
+            maximum: 50
       responses:
         '200':
-          description: 成功取得搜尋結果
+          description: 成功取得相關論文
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  result:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ThesisDetail'
+
+  /theses/search:
+    post:
+      tags: [論文]
+      summary: 檢索論文
+      description: |
+        對應設計稿 F01 進階檢索與 F03 檢索結果列。以 JSON 送交進階查詢條件：多組關鍵字＋可搜尋欄位（ti/au/ab 等）＋布林 and/or、
+        畢業學年度、學門、論文類別、全文類型、學位類別、語言等。回傳分頁論文列表（result）與 result_filters（出版日期、論文狀態、
+        主題、論文種類、語言、學位類別、聚類分析之可篩選選項與筆數），供左側二度篩選與「進行篩選」；二度篩選條件置於 request body 之 filter。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdvancedSearchRequest'
+      responses:
+        '200':
+          description: 成功取得進階檢索結果
           content:
             application/json:
               schema:
@@ -294,7 +362,9 @@ paths:
     post:
       tags: [LLM語義檢索]
       summary: LLM 語義檢索
-      description: 使用大型語言模型進行語義檢索，輸入自然語言問題，獲得智能回應和相關論文推薦
+      description: |
+        對應設計稿 F01/F02「語意檢索」tab。輸入自然語言問題或檢索需求，由 LLM 產生智能回應與相關論文推薦，
+        可指定偏好語言、最大推薦筆數、是否含摘要等。
       requestBody:
         required: true
         content:
@@ -341,7 +411,7 @@ paths:
     get:
       tags: [檢索歷史]
       summary: 取得檢索歷史
-      description: 取得使用者的搜尋歷史記錄，按時間倒序排列
+      description: 取得登入使用者之搜尋歷史記錄，按時間倒序排列，供「檢索歷史」功能或個人化顯示。需登入。
       security:
         - bearerAuth: []
       parameters:
@@ -376,7 +446,9 @@ paths:
     get:
       tags: [書車]
       summary: 我的書車
-      description: 取得使用者書車的論文列表
+      description: |
+        取得登入使用者之書車論文列表，對應設計稿 F07「我的書車」頁。回傳 result（論文列表）與 result_info（書車統計：
+        總計篇數、碩士篇數、博士篇數），供右側「書車統計」區塊與列表顯示。需登入。
       security:
         - bearerAuth: []
       parameters:
@@ -404,7 +476,7 @@ paths:
     post:
       tags: [書車]
       summary: 新增一筆書車
-      description: 新增一篇論文到我的書車
+      description: 新增一篇論文到目前使用者的書車，對應檢索結果列或論文詳情頁之「加入書車」按鈕。需登入。
       security:
         - bearerAuth: []
       requestBody:
@@ -431,7 +503,7 @@ paths:
     delete:
       tags: [書車]
       summary: 刪除一筆書車
-      description: 刪除一篇已書車的論文
+      description: 自書車中移除指定論文，對應書車列表單筆之移除操作。需登入。
       security:
         - bearerAuth: []
       parameters:
@@ -449,12 +521,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
 
+  /savedtheses/clear:
+    post:
+      tags: [書車]
+      summary: 清空書車
+      description: 一次清空目前使用者的書車內所有論文（對應「清空書車」按鈕）
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 成功清空書車
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
   # 論文匯出 API
   /theses/export:
     post:
       tags: [論文]
       summary: 匯出論文書目資料
-      description: 根據指定的論文ID列表和匯出設定，匯出論文書目資料
+      description: |
+        根據指定論文 ID 列表與匯出設定，匯出書目資料，對應設計稿 F03-2「匯出書目」、F07 書車頁「匯出書目」。
+        可選輸出欄位（簡易/完整）、引用格式（APA/Chicago/MLA 等）、字碼、檔案格式（txt/csv/excel/pdf），支援預覽模式。
+        需登入。
       security:
         - bearerAuth: []
       requestBody:
@@ -637,23 +727,83 @@ paths:
                           type: string
                         example: ["thesis999"]
 
+  # 申請大量書目 API
+  /applications/batch-bibliography:
+    post:
+      tags: [申請大量書目]
+      summary: 申請大量書目
+      description: |
+        對應設計稿 F05 與 header/footer「申請大量書目」連結。送出四步驟表單：1.基本資料（姓名、服務機構、聯絡電話、職稱、身分證、email）
+        2.書目需求（資料類型簡目/詳目、學年度區間、學門多選、檔案格式 CSV/JSON/XLSX/ODF）3.研究規劃（研究名稱、緣起、目的、成果類型）
+        4.同意申請須知。系統於 5 個工作日內回覆並寄送確認郵件。需登入。
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchBibliographyApplicationRequest'
+      responses:
+        '200':
+          description: 申請已送出
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BatchBibliographyApplicationResponse'
+        '400':
+          description: 請求參數錯誤（必填欄位缺漏或格式錯誤）
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        code:
+                          type: string
+                        message:
+                          type: string
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                  result:
+                    nullable: true
+
   # 排行榜 API
   /rankings:
     get:
       tags: [排行榜]
       summary: 取得學校熱門排行榜
-      description: 取得各校熱門論文排行榜，支援排行類型、年度與筆數限制
+      description: |
+        取得各校熱門論文排行榜，對應設計稿 F01 首頁「臺灣博碩士論文熱門排行榜」與 F06「排行統計」頁。左側選單為全文授權數/率、
+        全文公開數/率、被引用數、被點閱數、全文下載數；可篩選年度、快速檢索學校名稱、公私立、校院性質，表格為排名、學校名稱、已授全文、論文總數。
       parameters:
         - name: type
           in: query
-          description: 排行類型
+          description: 排行類型（對應左側熱門排行榜選單）
           required: true
           schema:
             type: string
-            enum: [total, reference, view, download]
+            enum:
+              - total
+              - full_text_rate
+              - open_access_count
+              - open_access_rate
+              - reference
+              - view
+              - download
+            description: total=全文授權數, full_text_rate=全文授權率, open_access_count=全文公開數, open_access_rate=全文公開率, reference=被引用數, view=被點閱數, download=全文下載數
         - name: year
           in: query
-          description: 年度（如 113、112、111）
+          description: 年度（民國，如 113、112）；不傳可表示歷年
           schema:
             type: integer
             example: 113
@@ -664,6 +814,35 @@ paths:
             type: integer
             default: 10
             maximum: 100
+        - name: page
+          in: query
+          description: 分頁頁碼（預設 1）
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          description: 每頁筆數（預設 20，對應「每頁顯示」）
+          schema:
+            type: integer
+            default: 20
+        - name: school
+          in: query
+          description: 快速檢索－學校名稱（關鍵字）
+          schema:
+            type: string
+        - name: public_private
+          in: query
+          description: 公私立（對應「公私立」篩選）
+          schema:
+            type: string
+            enum: [不拘, 公立, 私立]
+        - name: institution_type
+          in: query
+          description: 校院性質（對應「校院性質」篩選）
+          schema:
+            type: string
+            enum: [不拘, 一般大學, 技專校院, 其他]
       responses:
         '200':
           description: 成功取得排行榜
@@ -677,7 +856,8 @@ paths:
     get:
       tags: [統計資訊]
       summary: 取得論文統計資訊
-      description: 取得全站論文總數、參與學校數、開放取用論文數、累計下載數、授權率等統計資料
+      description: |
+        取得全站論文統計，對應設計稿 F01 首頁「論文統計」區塊：論文總數、參與學校、開放取用、累積下載、授權率等。
       responses:
         '200':
           description: 成功取得統計資訊
@@ -734,6 +914,7 @@ components:
 
     Announcement:
       type: object
+      description: 公告列表單筆，對應 F01 最新公告區塊之列表項（標題、類型、短內容、日期）
       properties:
         id:
           type: string
@@ -764,33 +945,463 @@ components:
     # 論文相關 Schema
     ThesisDetail:
       type: object
+      description: 論文書目與詳情（對應檢索結果列、論文詳情頁、書車列表）
       properties:
         id:
           type: string
           example: "1"
         title:
           type: string
+          description: 論文標題（中文）
           example: "台灣博碩士論文網發展現況與展望"
+        title_en:
+          type: string
+          description: 論文標題（英文）
+          example: "Development and Prospects of Taiwan ETDS"
         author:
           type: string
           example: "王小明"
         school:
           type: string
+          description: 學校名稱
           example: "國立臺灣大學"
+        department:
+          type: string
+          description: 系所
+          example: "資訊工程學系"
         degree:
           type: string
           example: "碩士"
         year:
           type: integer
+          description: 畢業學年度（民國）
           example: 113
+        cited_count:
+          type: integer
+          description: 被引用數
+          example: 12
+        supervisor:
+          type: string
+          description: 指導教授
+          example: "李大華博士"
+        co_supervisor:
+          type: string
+          description: 共同指導教授
+        pages:
+          type: integer
+          description: 頁數
+          example: 156
         abstract:
           type: string
+          description: 中文摘要
           example: "本論文探討台灣博碩士論文網的發展現況..."
+        abstract_en:
+          type: string
+          description: 英文摘要
         keywords:
           type: array
+          description: 關鍵詞（中文或混合）
           items:
             type: string
           example: ["論文網", "台灣", "Open Access"]
+        keywords_en:
+          type: array
+          description: 英文關鍵詞
+          items:
+            type: string
+        table_of_contents:
+          type: string
+          description: 論文目次
+        references:
+          type: string
+          description: 參考文獻
+        has_full_text:
+          type: boolean
+          description: 是否有電子全文可下載
+          example: true
+        has_multimedia:
+          type: boolean
+          description: 是否含多媒體作品
+          example: false
+
+    # 進階檢索：單一查詢條件列（關鍵字 + 欄位 + 與前一條的布林運算）
+    AdvancedSearchCriteria:
+      type: object
+      required: [keyword]
+      properties:
+        operator:
+          type: string
+          description: 與前一筆條件的邏輯運算（第一筆不需傳）
+          enum: [and, or]
+        keyword:
+          type: string
+          description: 查詢關鍵字
+          example: "深度學習"
+        field:
+          type: string
+          default: ""
+          enum:
+            - ""
+            - ti
+            - au
+            - asc
+            - sdp
+            - pyr
+            - ad
+            - say
+            - kw
+            - tc
+            - ab
+            - rf
+            - yr
+            - sglv1
+            - sglv2
+          description: |
+            可搜尋欄位（空=不限欄位）。ti=論文名稱, au=研究生, asc=校院名稱,
+            sdp=系所, pyr=論文出版年, ad=指導教授, say=口試委員, kw=關鍵詞,
+            tc=論文目次, ab=摘要, rf=論文參考文獻, yr=畢業學年度, sglv1=學門, sglv2=學類
+      description: 第一筆可不帶 operator；第二筆起需帶 and 或 or 與前一筆組合
+
+    # 進階檢索請求 body
+    AdvancedSearchRequest:
+      type: object
+      properties:
+        keywords:
+          type: array
+          description: 查詢條件列（可新增多欄位，每筆含關鍵字、欄位、第二筆起含 operator）
+          items:
+            $ref: '#/components/schemas/AdvancedSearchCriteria'
+          example:
+            - keyword: "機器學習"
+              field: "ti"
+            - operator: "and"
+              keyword: "教育"
+              field: "ab"
+        start_year:
+          type: integer
+          description: 畢業學年度 起始年（民國）
+          example: 110
+        end_year:
+          type: integer
+          description: 畢業學年度 結束年（民國）
+          example: 113
+        discipline:
+          type: string
+          description: 學門（空為全部）
+          enum:
+            - ""
+            - 教育學門
+            - 藝術學門
+            - 人文學門
+            - 設計學門
+            - 社會及行為科學學門
+            - 傳播學門
+            - 商業及管理學門
+            - 法律學門
+            - 生命科學學門
+            - 自然科學學門
+            - 數學及統計學門
+            - 電算機學門
+            - 工程學門
+            - 建築及都市規劃學門
+            - 農業科學學門
+            - 獸醫學門
+            - 醫藥衛生學門
+            - 社會服務學門
+            - 民生學門
+            - 運輸服務學門
+            - 環境保護學門
+        thesis_type:
+          type: string
+          description: |
+            論文類別（空為全部）。1=學術論文, 2=代替論文：技術報告（應用科技類）,
+            3=代替論文：作品連同書面報告（藝術類）, 4=代替論文：成就證明連同書面報告（體育運動類）,
+            5=代替論文：專業實務報告（專業實務類）
+          enum: ["", "1", "2", "3", "4", "5"]
+        full_text_types:
+          type: array
+          items:
+            type: string
+            enum: [電子全文, 紙本論文授權, 影音圖像]
+        degree_types:
+          type: array
+          items:
+            type: string
+            enum: [博士, 碩士]
+        languages:
+          type: array
+          items:
+            type: string
+            enum: [中文, 日文, 英文, 其他語言]
+        sort:
+          type: string
+          enum: [viewCount, downloadCount, year, relevance]
+          default: relevance
+        page:
+          type: integer
+          default: 1
+        per_page:
+          type: integer
+          default: 10
+        filter:
+          $ref: '#/components/schemas/ResultFilterRequest'
+          description: 二度篩選條件（檢索結果頁左側「進行篩選」）
+
+    # 二度篩選 request（檢索結果頁左側「進行篩選」送出的條件）
+    ResultFilterRequest:
+      type: object
+      description: 二度篩選條件，對應 result_filters 各區塊的選項 value
+      properties:
+        publication_date_filter:
+          type: string
+          description: 出版日期篩選（自定範圍時填 custom 並搭配 start_year/end_year）
+          enum: [last_12_months, last_5_years, last_10_years, custom]
+        publication_date_start_year:
+          type: integer
+          description: 自定日期範圍 開始年份
+        publication_date_end_year:
+          type: integer
+          description: 自定日期範圍 結束年份
+        thesis_status:
+          type: array
+          description: 論文狀態，可多選
+          items:
+            type: string
+            enum: [授權公開, 延後公開]
+        subjects:
+          type: array
+          description: 主題，可多選（與 result_filters.subject.options 的 value 對應）
+          items:
+            type: string
+        thesis_types:
+          type: array
+          description: 論文種類，可多選（與 result_filters.thesis_type.options 的 value 對應，1~5）
+          items:
+            type: string
+            enum: ["1", "2", "3", "4", "5"]
+        cluster_analysis_terms:
+          type: array
+          description: 聚類分析，可多選（與 result_filters.cluster_analysis 的 value 對應）
+          items:
+            type: string
+
+    # 檢索結果頁左側「可篩選選項」單一項目（含筆數）
+    FilterOptionWithCount:
+      type: object
+      properties:
+        label:
+          type: string
+          description: 顯示名稱
+        value:
+          type: string
+          description: 送出篩選時使用的值
+        count:
+          type: integer
+          description: 該選項對應的論文筆數
+
+    # 檢索結果：出版日期篩選區塊
+    PublicationDateFilterBlock:
+      type: object
+      properties:
+        options:
+          type: array
+          description: 預設區間選項（前12個月、前5年、前10年）
+          items:
+            $ref: '#/components/schemas/FilterOptionWithCount'
+          example:
+            - label: 前12個月
+              value: last_12_months
+              count: 147
+            - label: 前5年
+              value: last_5_years
+              count: 537
+            - label: 前10年
+              value: last_10_years
+              count: 677
+        custom_range_supported:
+          type: boolean
+          description: 是否支援自定日期範圍
+          default: true
+
+    # 檢索結果：論文狀態篩選區塊
+    ThesisStatusFilterBlock:
+      type: object
+      properties:
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/FilterOptionWithCount'
+          example:
+            - label: 授權公開
+              value: 授權公開
+              count: 147
+            - label: 延後公開
+              value: 延後公開
+              count: 537
+
+    # 檢索結果：主題篩選區塊
+    SubjectFilterBlock:
+      type: object
+      properties:
+        options:
+          type: array
+          description: 依目前檢索結果動態產生的主題與筆數
+          items:
+            $ref: '#/components/schemas/FilterOptionWithCount'
+          example:
+            - label: 深度學習
+              value: 深度學習
+              count: 147
+            - label: 機器學習
+              value: 機器學習
+              count: 537
+            - label: 人工智慧
+              value: 人工智慧
+              count: 677
+            - label: 神經網路
+              value: 神經網路
+              count: 677
+            - label: 資料探勘
+              value: 資料探勘
+              count: 677
+            - label: 自然語言處理
+              value: 自然語言處理
+              count: 677
+
+    # 檢索結果：論文種類篩選區塊（二度篩選）
+    ThesisTypeFilterBlock:
+      type: object
+      properties:
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/FilterOptionWithCount'
+          example:
+            - label: 學術論文
+              value: "1"
+              count: 147
+            - label: 技術報告
+              value: "2"
+              count: 537
+            - label: 作品連同書面報告
+              value: "3"
+              count: 677
+            - label: 成就證明連同書面報告
+              value: "4"
+              count: 677
+            - label: 專業實務報告
+              value: "5"
+              count: 677
+
+    # 檢索結果：語言篩選區塊（二度篩選）
+    LanguageFilterBlock:
+      type: object
+      properties:
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/FilterOptionWithCount'
+          example:
+            - label: 中文
+              value: 中文
+              count: 147
+            - label: 英文
+              value: 英文
+              count: 537
+
+    # 檢索結果：學位類別篩選區塊（二度篩選）
+    DegreeTypeFilterBlock:
+      type: object
+      properties:
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/FilterOptionWithCount'
+          example:
+            - label: 全部
+              value: ""
+              count: 147
+            - label: 碩士論文
+              value: 碩士論文
+              count: 537
+            - label: 博士論文
+              value: 博士論文
+              count: 537
+
+    # 檢索結果：聚類分析篩選區塊（二度篩選，可階層展開）
+    ClusterAnalysisOption:
+      type: object
+      properties:
+        label:
+          type: string
+        value:
+          type: string
+        count:
+          type: integer
+        children:
+          type: array
+          description: 下層聚類節點（可展開）
+          items:
+            $ref: '#/components/schemas/ClusterAnalysisOption'
+
+    ClusterAnalysisFilterBlock:
+      type: object
+      properties:
+        options:
+          type: array
+          description: 聚類分析選項，可含 children 形成階層
+          items:
+            $ref: '#/components/schemas/ClusterAnalysisOption'
+          example:
+            - label: 機器學習
+              value: 機器學習
+              count: 57
+            - label: 類神經網絡
+              value: 類神經網絡
+              count: 37
+            - label: 人工智慧
+              value: 人工智慧
+              count: 36
+              children:
+                - label: 專家系統
+                  value: 專家系統
+                  count: 1
+                - label: 知識庫
+                  value: 知識庫
+                  count: 7
+                - label: 知識管理
+                  value: 知識管理
+                  count: 4
+                - label: 本體論
+                  value: 本體論
+                  count: 3
+            - label: 影像辨識
+              value: 影像辨識
+              count: 23
+
+    # 檢索結果頁左側「可篩選」區塊（供前端繪製篩選 UI，並可回傳做二度篩選）
+    SearchResultFilters:
+      type: object
+      description: 檢索結果列左側的篩選區塊（出版日期、論文狀態、主題、論文種類、語言、學位類別、聚類分析），含各選項筆數；可將選取值帶入 request 做二度篩選
+      properties:
+        publication_date:
+          $ref: '#/components/schemas/PublicationDateFilterBlock'
+        thesis_status:
+          $ref: '#/components/schemas/ThesisStatusFilterBlock'
+        subject:
+          $ref: '#/components/schemas/SubjectFilterBlock'
+        thesis_type:
+          $ref: '#/components/schemas/ThesisTypeFilterBlock'
+          description: 論文種類（二度篩選）
+        language:
+          $ref: '#/components/schemas/LanguageFilterBlock'
+          description: 語言（二度篩選）
+        degree_type:
+          $ref: '#/components/schemas/DegreeTypeFilterBlock'
+          description: 學位類別（二度篩選）
+        cluster_analysis:
+          $ref: '#/components/schemas/ClusterAnalysisFilterBlock'
+          description: 聚類分析（二度篩選，可階層展開）
 
     ThesisSearchResponse:
       type: object
@@ -814,6 +1425,9 @@ components:
             $ref: '#/components/schemas/ThesisDetail'
         result_info:
           $ref: '#/components/schemas/PaginationInfo'
+        result_filters:
+          $ref: '#/components/schemas/SearchResultFilters'
+          description: 檢索結果可篩選區塊（出版日期、論文狀態、主題、論文種類、語言、學位類別、聚類分析），含各選項筆數；可將選取值帶入下次 request 做二度篩選
 
     # LLM 語義檢索相關 Schema
     LLMResponse:
@@ -1002,6 +1616,7 @@ components:
 
     SavedThesesResponse:
       type: object
+      description: 我的書車列表，含書車統計（總計/碩士/博士篇數）
       properties:
         success:
           type: boolean
@@ -1020,6 +1635,22 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/ThesisDetail'
+        result_info:
+          type: object
+          description: 書車統計（對應右側「書車統計」區塊）
+          properties:
+            total:
+              type: integer
+              description: 總計論文篇數
+              example: 4
+            masters_count:
+              type: integer
+              description: 碩士論文的篇數
+              example: 2
+            doctorates_count:
+              type: integer
+              description: 博士論文的篇數
+              example: 2
 
     # 排行榜相關 Schema
     RankingResponse:
@@ -1042,6 +1673,7 @@ components:
           type: array
           items:
             type: object
+            description: 對應排行榜表格列（排名、學校名稱、已授全文、論文總數）
             properties:
               rank:
                 type: integer
@@ -1051,7 +1683,16 @@ components:
                 example: "國立臺灣大學"
               count:
                 type: integer
+                description: 依 type 對應之數值（如已授全文數）
                 example: 12456
+              authorized_count:
+                type: integer
+                description: 已授全文數（當 type 為全文相關時）
+                example: 1146
+              total_count:
+                type: integer
+                description: 論文總數
+                example: 1423
 
     # 統計資訊 Schema
     StatisticsResponse:
@@ -1085,6 +1726,10 @@ components:
               type: integer
               description: 開放取用論文數
               example: 890123
+            cumulativeDownloads:
+              type: integer
+              description: 累積下載數
+              example: 45600000
             authorizationRate:
               type: number
               format: float
@@ -1112,6 +1757,162 @@ components:
         result:
           type: object
           nullable: true
+
+    # 申請大量書目相關 Schema
+    BatchBibliographyApplicationRequest:
+      type: object
+      required: [basic_info, bibliography_requirements, research_plan, accept_terms]
+      description: 申請大量書目表單（四步驟合併送出）
+      properties:
+        basic_info:
+          $ref: '#/components/schemas/BatchBibliographyBasicInfo'
+        bibliography_requirements:
+          $ref: '#/components/schemas/BatchBibliographyRequirements'
+        research_plan:
+          $ref: '#/components/schemas/BatchBibliographyResearchPlan'
+        accept_terms:
+          type: boolean
+          description: 是否已詳細閱讀並同意申請須知，所提供資訊均屬實
+          example: true
+
+    BatchBibliographyBasicInfo:
+      type: object
+      description: 1. 基本資料 - 申請人基本資訊
+      required: [name, service_organization, contact_phone, job_title, id_number, email]
+      properties:
+        name:
+          type: string
+          description: 姓名（必填）
+          example: "王小明"
+        service_organization:
+          type: string
+          description: 服務機構（必填）
+          example: "國立臺灣大學"
+        contact_phone:
+          type: string
+          description: 聯絡電話（必填）
+          example: "02-12345678"
+        unit_type:
+          type: string
+          description: 單位類別（選填）
+          example: "大專院校"
+        job_title:
+          type: string
+          description: 職稱（必填）
+          example: "助理教授"
+        id_number:
+          type: string
+          description: 身分證號（必填）
+          example: "A123456789"
+        email:
+          type: string
+          format: email
+          description: 電子郵件（必填）
+          example: "user@example.com"
+
+    BatchBibliographyRequirements:
+      type: object
+      description: 2. 書目需求 - 資料範圍與格式要求
+      required: [data_type, start_academic_year, end_academic_year, disciplines, file_formats]
+      properties:
+        data_type:
+          type: string
+          description: 資料類型（簡目=基本資訊 / 詳目=含摘要關鍵字等）
+          enum: [簡目, 詳目]
+        start_academic_year:
+          type: integer
+          description: 起始學年度（民國年）
+          example: 108
+        end_academic_year:
+          type: integer
+          description: 結束學年度（民國年）
+          example: 113
+        disciplines:
+          type: array
+          description: 學門選擇，可多選
+          items:
+            type: string
+            enum:
+              - 教育學門
+              - 藝術學門
+              - 人文學門
+              - 設計學門
+              - 社會及行為科學學門
+              - 傳播學門
+              - 商業及管理學門
+              - 法律學門
+              - 生命科學學門
+              - 自然科學學門
+              - 數學及統計學門
+              - 電算機學門
+              - 工程學門
+              - 建築及都市規劃學門
+              - 農業科學學門
+              - 獸醫學門
+              - 醫藥衛生學門
+              - 社會服務學門
+              - 民生學門
+              - 運輸服務學門
+              - 環境保護學門
+        file_formats:
+          type: array
+          description: 檔案格式，可多選
+          items:
+            type: string
+            enum: [CSV, JSON, XLSX, ODF]
+
+    BatchBibliographyResearchPlan:
+      type: object
+      description: 3. 研究規劃 - 研究計畫詳細資訊
+      required: [research_title, research_origin, research_objective]
+      properties:
+        research_title:
+          type: string
+          description: 研究名稱（必填）
+          example: "臺灣博碩士論文開放取用與引用分析"
+        research_origin:
+          type: string
+          description: 研究緣起（必填）
+          example: "請描述研究的背景及動機..."
+        research_objective:
+          type: string
+          description: 研究目的（必填）
+          example: "請描述研究的目標與預期貢獻..."
+        research_outcome_types:
+          type: array
+          description: 研究成果類型，可多選
+          items:
+            type: string
+            enum: [會議論文, 博碩士論文, 研究報告, 期刊論文, 專書, 其他]
+
+    BatchBibliographyApplicationResponse:
+      type: object
+      description: 申請已送出之回應
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: object
+          properties:
+            application_id:
+              type: string
+              description: 申請案編號
+              example: "BB202402200001"
+            message:
+              type: string
+              description: 確認訊息（系統將寄送確認郵件至申請人信箱）
+              example: "您的書目資料申請已送出，我們將於5個工作日內回覆您，請留意信箱訊息。"
 
     # 分頁資訊 Schema
     PaginationInfo:
