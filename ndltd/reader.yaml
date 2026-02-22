@@ -2,9 +2,9 @@ openapi: 3.0.3
 info:
   title: 博碩士論文系統 讀者端
   description: |
-    讀者端 API，對應設計稿（ndltd/reader-figma）：F01 首頁（基本/進階/語意檢索、排行榜、論文統計、最新公告）、
-    F03 檢索結果列與二度篩選、F04 論文詳情（摘要/目次/參考文獻、引用格式、相關論文）、F05 申請大量書目、
-    F06 排行統計、F07 我的書車與匯出書目。
+    讀者端 API，對應設計稿（ndltd/reader-figma）：F01 首頁（基本/進階/語意檢索）、F02 語意檢索、
+    F03 檢索結果列（F03-1 選取資料、F03-2 匯出書目、F03-3 下載全文、F03-4 引用格式）、
+    F04 論文書目資料（F04-1～F04-4 含多媒體）、F05 申請大量書目（F05-1～F05-5）、F06 排行統計、F07 論文收藏/書車（F07-1、F07-2）。
   version: 1.0.0
   contact:
     name: Github 原始碼
@@ -201,7 +201,7 @@ paths:
       description: |
         依論文 id 取得單篇論文完整書目與詳情，對應設計稿 F04 論文詳情頁。含中英文標題、被引用數、指導教授/共同指導、
         學校系所、畢業學年度、摘要與關鍵字（中英）、目次（table_of_contents）、參考文獻（references）、是否有全文/多媒體等。
-        頁面上「下載全文」「加入書車」「引用格式」「相關論文」等由各自 API 支援。
+        頁面上「下載全文」由 GET /theses/{id}/download 支援，「加入書車」由 POST /savedtheses、「引用格式」由本模組 /citation、「相關論文」由 /related 支援。
       parameters:
         - name: id
           in: path
@@ -233,6 +233,53 @@ paths:
                     example: []
                   result:
                     $ref: '#/components/schemas/ThesisDetail'
+
+  /theses/{id}/download:
+    get:
+      tags: [論文]
+      summary: 下載論文全文
+      description: |
+        對應設計稿 F03-3 檢索結果列：下載全文、F04 論文詳情頁「下載全文」。取得指定論文之電子全文檔案（如 PDF）下載連結或導向檔案串流。
+        若該論文無授權電子全文則回傳 404 或 403。實作上可回傳 302 重新導向至實際檔案 URL，或直接回傳 binary。
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: 論文唯一識別碼
+          schema:
+            type: string
+            example: "1"
+      responses:
+        '200':
+          description: 成功，回傳檔案內容（或 Content-Disposition 下載）
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '302':
+          description: 重新導向至實際全文檔案 URL
+          headers:
+            Location:
+              schema:
+                type: string
+                description: 全文檔案 URL
+        '403':
+          description: 無權限或該論文未開放全文下載
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: 論文不存在或無電子全文
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /theses/{id}/citation:
     get:
@@ -949,72 +996,155 @@ components:
       properties:
         id:
           type: string
+          description: 論文唯一識別碼
           example: "1"
+        thesis_number:
+          type: string
+          description: 論文編號
+          example: "108NTNU1234567"
+        thesis_type:
+          type: string
+          description: 論文種類（如學術論文、技術報告、作品連同書面報告等）
+          example: "學術論文"
+        author:
+          type: string
+          description: 研究生中文名（相容舊欄位）
+          example: "王小明"
+        author_en:
+          type: string
+          description: 研究生外文名
+          example: "WANG, SIAO-MING"
         title:
           type: string
-          description: 論文標題（中文）
+          description: 論文中文名稱
           example: "台灣博碩士論文網發展現況與展望"
         title_en:
           type: string
-          description: 論文標題（英文）
+          description: 論文外文名稱
           example: "Development and Prospects of Taiwan ETDS"
-        author:
+        supervisor:
           type: string
-          example: "王小明"
+          description: 指導教授-中文名（相容舊欄位）
+          example: "李大華博士"
+        supervisor_en:
+          type: string
+          description: 指導教授-外文名
+          example: "LEE, DA-HWA"
+        supervisor_email:
+          type: string
+          format: email
+          description: 指導教授E-mail
+        co_supervisor:
+          type: string
+          description: 共同指導教授
+        oral_committee:
+          type: string
+          description: 口試委員（多人可為陣列或逗號分隔，依實作而定）
+        oral_committee_en:
+          type: string
+          description: 口試委員-外文名
+        oral_exam_date:
+          type: string
+          format: date
+          description: 口試日期
+          example: "2024-06-15"
+        degree:
+          type: string
+          description: 學位類別
+          example: "碩士"
         school:
           type: string
-          description: 學校名稱
+          description: 校院名稱
           example: "國立臺灣大學"
         department:
           type: string
-          description: 系所
+          description: 系所名稱
           example: "資訊工程學系"
-        degree:
-          type: string
-          example: "碩士"
         year:
           type: integer
           description: 畢業學年度（民國）
           example: 113
-        cited_count:
+        publication_year:
           type: integer
-          description: 被引用數
-          example: 12
-        supervisor:
+          description: 論文出版年（西元或民國，依實作）
+          example: 2024
+        student_id:
           type: string
-          description: 指導教授
-          example: "李大華博士"
-        co_supervisor:
+          description: 學號
+          example: "M110123456"
+        language:
           type: string
-          description: 共同指導教授
+          description: 語文別
+          example: "中文"
         pages:
           type: integer
-          description: 頁數
+          description: 論文頁數
           example: 156
-        abstract:
-          type: string
-          description: 中文摘要
-          example: "本論文探討台灣博碩士論文網的發展現況..."
-        abstract_en:
-          type: string
-          description: 英文摘要
         keywords:
           type: array
-          description: 關鍵詞（中文或混合）
+          description: 中文關鍵詞
           items:
             type: string
           example: ["論文網", "台灣", "Open Access"]
         keywords_en:
           type: array
-          description: 英文關鍵詞
+          description: 外文關鍵詞
           items:
             type: string
+        abstract:
+          type: string
+          description: 論文中文摘要
+          example: "本論文探討台灣博碩士論文網的發展現況..."
+        abstract_en:
+          type: string
+          description: 論文外文摘要
         table_of_contents:
           type: string
           description: 論文目次
         references:
           type: string
-          description: 參考文獻
+          description: 論文參考文獻
+        full_text_open_time:
+          type: string
+          format: date-time
+          description: 全文開放時間
+        delayed_publication_date:
+          type: string
+          format: date
+          description: 延後公開日期
+        original_thesis_url:
+          type: string
+          format: uri
+          description: 原論文連結
+        discipline:
+          type: string
+          description: 學門
+          example: "電算機學門"
+        discipline_category:
+          type: string
+          description: 學類
+        full_text_file_id:
+          type: string
+          description: 電子全文檔案ID
+        alternative_thesis_file_id:
+          type: string
+          description: 替代論文檔案ID
+        authorization_letter_file_id:
+          type: string
+          description: 授權書檔案ID
+        campus_authorization:
+          type: boolean
+          description: 校內授權
+        ncl_authorization:
+          type: boolean
+          description: 國圖授權
+        database_vendor_authorization:
+          type: boolean
+          description: 資料庫廠商授權
+        cited_count:
+          type: integer
+          description: 被引用數
+          example: 12
         has_full_text:
           type: boolean
           description: 是否有電子全文可下載
@@ -1738,6 +1868,29 @@ components:
 
 
     # 通用 Schema
+    ErrorResponse:
+      type: object
+      description: 通用錯誤回應
+      properties:
+        success:
+          type: boolean
+          example: false
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              code:
+                type: string
+              message:
+                type: string
+        messages:
+          type: array
+          items:
+            type: object
+        result:
+          nullable: true
+
     SuccessResponse:
       type: object
       properties:

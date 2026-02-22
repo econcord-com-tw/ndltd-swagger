@@ -2,8 +2,9 @@ openapi: 3.0.3
 info:
   title: 大學論文系統 學生端
   description: |
-    學生端 API，對應設計稿（ndltdsch/student-figma）之流程：首頁與五步驟進度、論文上傳（檔案與文字資料）、
-    授權設定（含電子簽章/簽名上傳）、退件紀錄與詳情、論文更換申請、常見問答與文件下載、問題回報、待辦階段。
+    學生端 API，對應設計稿（ndltdsch/student-figma）：S01 首次進入與論文送出（S01-1～S01-4 進行中/退件/通過送存/完成）、
+    S02 上傳資料與授權設定（S02-1～S02-3 上傳完成/授權完成/送出後）、S03-1～S03-6 上傳資料與授權（電子簽章/簽名上傳）、
+    S04/S04-1 審查退件紀錄、S05/S05-1 更換論文說明與提交、常見問答、文件下載、問題回報、待辦階段。
   version: 1.0.0
   contact:
     name: Github 原始碼
@@ -113,6 +114,64 @@ paths:
                           format: date-time
 
   # 論文上傳管理 API
+  /thesis/status:
+    get:
+      tags: [論文上傳]
+      summary: 取得目前論文提交狀態
+      description: |
+        取得登入學生目前論文提交狀態，對應設計稿 S01 首次進入、S01-1～S01-4 論文送出（進行中/退件/通過送存/完成）、
+        S02-1～S02-3 上傳完成狀態、授權完成狀態、送出後。回傳是否已上傳檔案、是否已送出書目、是否已完成授權、thesisId、與 /todo 可併用於首頁狀態顯示。
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  result:
+                    type: object
+                    properties:
+                      has_uploaded_files:
+                        type: boolean
+                        description: 是否已上傳論文主檔或補充檔
+                      has_submitted_metadata:
+                        type: boolean
+                        description: 是否已送出書目/欄位資料
+                      has_authorization:
+                        type: boolean
+                        description: 是否已完成授權設定
+                      thesis_id:
+                        type: string
+                        description: 論文唯一識別碼（已建立時）
+                        nullable: true
+                      upload_id:
+                        type: string
+                        description: 上傳批次識別碼（若有）
+                        nullable: true
+                      last_submitted_at:
+                        type: string
+                        format: date-time
+                        nullable: true
+                      submission_status:
+                        type: string
+                        description: 送出後狀態（可與 /todo 併用）
+                        enum: [draft, submitted, under_review, rejected, approved, deposit_done]
+                        nullable: true
+
   /thesis/uploadFile:
     post:
       tags: [論文上傳]
@@ -372,7 +431,7 @@ paths:
                   description: 電子簽章文字或 base64 簽名圖（依實作擇一）
                 signature_file_id:
                   type: string
-                  description: 已上傳之簽名檔案 ID（若採簽名上傳流程）
+                  description: 已上傳之簽名檔案 ID（若採簽名上傳流程，由 POST /thesis/uploadSignature 取得）
       responses:
         '200':
           description: 儲存成功
@@ -400,6 +459,67 @@ paths:
                       thesisId:
                         type: string
                         example: "thesis-001"
+
+  /thesis/uploadSignature:
+    post:
+      tags: [論文上傳]
+      summary: 上傳簽名圖檔
+      description: |
+        對應設計稿 S03-6 授權設定：簽名上傳。上傳簽名圖片檔（如 PNG、JPG），回傳 signature_file_id 供 POST /thesis/authorization 之 signature_file_id 使用。
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 簽名圖檔（建議 PNG/JPG）
+      responses:
+        '200':
+          description: 上傳成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                    example: []
+                  result:
+                    type: object
+                    properties:
+                      signature_file_id:
+                        type: string
+                        description: 簽名檔案 ID，帶入授權設定 API
+                        example: "sig-abc123"
+        '400':
+          description: 檔案格式或大小不符
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: false
+                  errors:
+                    type: array
+                    items:
+                      type: object
 
   /thesis/rejections:
     get:

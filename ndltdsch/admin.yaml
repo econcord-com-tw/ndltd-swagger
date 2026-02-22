@@ -2,8 +2,10 @@ openapi: 3.0.3
 info:
   title: 大學論文系統 學校端（機構後台）
   description: |
-    學校端管理 API，對應設計稿（ndltdsch/admin-figma）：A01 學校端最高權限/審查人員、A02 論文格式限制/欄位資訊/授權設定/退件樣板、
-    A03 人員權限管理、A04 論文書目資料管理（問題回報、紙本繳交、抽換論文、匯入）、A05 論文統計報表、A06 前台策展規劃、A07 校內系所設定、A08 送存清單。
+    學校端管理 API，對應設計稿（ndltdsch/admin-figma）：A01 最高權限/審查人員/非國圖學校開放、A02 論文格式限制/欄位資訊/授權設定/退件樣板、
+    A03 人員權限管理（新增/編輯人員）、A04 論文書目資料管理（問題回報、紙本繳交、抽換、匯入、非國圖學校）、A05 論文統計報表（條件/呈現/匯出/追蹤）、
+    A06 前台策展規劃（新增主題與論文）、A07 校內系所設定與問題回報、A08 送存清單（手動輸入、OCR、封面辨識、清點裝箱、送存國圖）、
+    R01 研究生論文審核（待審核、更換需求、近期退件、退件樣板）、R02 審核論文（確認資料、摘要、目次、參考文獻、電子全文、授權、退件樣板/歷史/審核結果）。
   version: 1.0.0
   contact:
     name: Github 原始碼
@@ -824,11 +826,105 @@ paths:
               schema:
                 $ref: '#/components/schemas/ThesisListResponse'
 
+  /theses/{thesisId}:
+    get:
+      tags: [論文管理]
+      summary: 取得單篇論文詳情
+      description: 取得指定論文的完整書目與狀態，對應設計稿 A04 論文書目資料管理、R02 審核論文（確認資料、摘要、目次、參考文獻、電子全文、授權資料等）。
+      parameters:
+        - name: thesisId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 論文唯一識別碼
+      responses:
+        '200':
+          description: 成功取得論文詳情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThesisDetailResponse'
+        '404':
+          description: 找不到該論文
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /theses/{thesisId}/paper-status:
+    put:
+      tags: [論文管理]
+      summary: 更新紙本繳交狀態
+      description: 對應設計稿 A04-2 紙本繳交。更新指定論文的紙本繳交狀態（已繳交/未繳交等）。
+      parameters:
+        - name: thesisId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                paper_submitted:
+                  type: boolean
+                submitted_at:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到該論文
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /theses/import:
+    post:
+      tags: [論文管理]
+      summary: 匯入論文資料
+      description: 對應設計稿 A04-7、A04-4 非國圖學校：匯入資料。批次匯入論文書目或資料（如 CSV/Excel）。
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                format:
+                  type: string
+                  enum: [csv, xlsx]
+      responses:
+        '200':
+          description: 匯入成功（或回傳匯入結果摘要）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThesisImportResponse'
+        '400':
+          description: 檔案格式錯誤或驗證失敗
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /theses/{thesisId}/replace:
     post:
       tags: [論文管理]
       summary: 抽換論文
-      description: 對單篇論文進行抽換，需確認相關條件
+      description: 對應設計稿 A04-3、A04-8 論文抽換。對單篇論文進行抽換，需確認相關條件
       parameters:
         - name: thesisId
           in: path
@@ -976,6 +1072,129 @@ paths:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
 
+  /reviews/{thesisId}/reject-history:
+    get:
+      tags: [論文審核]
+      summary: 取得論文退件歷史紀錄
+      description: 對應設計稿 R02-6 審核論文：退件歷史紀錄。取得該論文歷次退件紀錄（退件樣板、退件資訊、時間等）。
+      parameters:
+        - name: thesisId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功取得退件歷史
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RejectHistoryResponse'
+        '404':
+          description: 找不到該論文
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # 問題回報 API（對應 A04-1、A04-6、A07-1 問題回報）
+  /issues:
+    get:
+      tags: [問題回報]
+      summary: 取得問題回報清單
+      description: 取得學校端問題回報清單，對應設計稿 A04-1、A04-6、A07-1 問題回報。
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [待處理, 處理中, 已解決, 已關閉]
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueListResponse'
+    post:
+      tags: [問題回報]
+      summary: 新增問題回報
+      description: 學校端提交問題回報。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueCreate'
+      responses:
+        '201':
+          description: 成功新增
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueResponse'
+
+  /issues/{id}:
+    get:
+      tags: [問題回報]
+      summary: 取得單一問題回報
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueResponse'
+        '404':
+          description: 找不到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [問題回報]
+      summary: 更新問題回報
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueUpdate'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueResponse'
+        '404':
+          description: 找不到
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   # 統計報表 API (來自 reports.yaml)
   /reports:
     post:
@@ -1066,6 +1285,30 @@ paths:
                 type: string
                 format: binary
 
+  /reports/export-history:
+    get:
+      tags: [統計報表]
+      summary: 取得報表匯出紀錄
+      description: 對應設計稿 A05-4 追蹤：完成行動。查詢報表匯出歷史紀錄。
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportExportHistoryResponse'
+
   # 送存國圖 API (來自 submissions.yaml)
   /submissions:
     get:
@@ -1106,11 +1349,82 @@ paths:
               schema:
                 $ref: '#/components/schemas/SuccessResponse'
 
+  /submissions/add:
+    post:
+      tags: [送存國圖]
+      summary: 手動加入論文至送存清單
+      description: 對應設計稿 A08-1 送存清單：手動輸入、手動輸入論文。將單筆或多筆論文手動加入送存清單。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [thesisIds]
+              properties:
+                thesisIds:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: 成功加入
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /submissions/ocr:
+    post:
+      tags: [送存國圖]
+      summary: OCR 上傳加入送存清單
+      description: 對應設計稿 A08-1 送存清單：OCR上傳輸入。上傳檔案經 OCR 辨識後將論文加入送存清單。
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 辨識成功並加入送存清單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionOcrResponse'
+
+  /submissions/cover-recognition:
+    post:
+      tags: [送存國圖]
+      summary: 封面辨識上傳加入送存清單
+      description: 對應設計稿 A08-1 送存清單：封面辨識。上傳封面圖片辨識後將論文加入送存清單。
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: 辨識成功並加入送存清單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionOcrResponse'
+
   /submissions/history:
     get:
       tags: [送存國圖]
       summary: 查詢送存紀錄
-      description: 查詢歷史送存紀錄
+      description: 查詢歷史送存紀錄，對應設計稿 A08-1 送存：送存國家圖書館後之紀錄。
       responses:
         '200':
           description: 成功取得送存紀錄
@@ -1161,6 +1475,7 @@ components:
           description: 使用者電子郵件
           example: "user@example.com"
 
+    # 書車/送存清單用論文摘要（與 ndltd/reader.yaml ThesisDetail 欄位命名一致）
     SavedThesis:
       type: object
       properties:
@@ -1170,43 +1485,43 @@ components:
           example: "1"
         title:
           type: string
-          description: 論文標題
+          description: 論文中文名稱
           example: "台灣博碩士論文網發展現況與展望"
         author:
           type: string
-          description: 作者
+          description: 研究生中文名（相容舊欄位）
           example: "王小明"
         school:
           type: string
-          description: 學校
+          description: 校院名稱
           example: "國立臺灣大學"
         degree:
           type: string
-          description: 學位
+          description: 學位類別
           example: "碩士"
-        type:
+        thesis_type:
           type: string
-          description: 論文類型
-          example: "學術"
+          description: 論文種類（如學術論文、技術報告等）
+          example: "學術論文"
         college:
           type: string
-          description: 學院
+          description: 學院（選填）
           example: "工學院"
         department:
           type: string
-          description: 系所
+          description: 系所名稱
           example: "資訊工程學系"
-        advisor:
+        supervisor:
           type: string
-          description: 指導教授
+          description: 指導教授-中文名（相容舊欄位）
           example: "陳大明"
         language:
           type: string
-          description: 論文語言
+          description: 語文別
           example: "中文"
         year:
           type: integer
-          description: 年度
+          description: 畢業學年度（民國）
           example: 113
         abstract:
           type: string
@@ -1456,31 +1771,164 @@ components:
                 type: string
               example: ["fulltext", "bibliographic", "toc"]
 
-    # 論文相關 Schema
+    # 論文相關 Schema（與 ndltd/reader.yaml ThesisDetail 欄位一致，另加管理端欄位）
     Thesis:
       type: object
+      description: 論文書目與詳情（管理端含 status、publishDate 等）
       properties:
         id:
           type: string
+          description: 論文唯一識別碼
           example: "thesis123"
-        department:
+        thesis_number:
           type: string
-          example: "資訊工程學系"
-        studentName:
+          description: 論文編號
+          example: "108NTNU1234567"
+        thesis_type:
           type: string
+          description: 論文種類（如學術論文、技術報告、作品連同書面報告等）
+          example: "學術論文"
+        author:
+          type: string
+          description: 研究生中文名（相容舊欄位）
           example: "陳小明"
-        studentId:
+        author_en:
           type: string
-          example: "M110123456"
+          description: 研究生外文名
         title:
           type: string
+          description: 論文中文名稱
           example: "基於深度學習的自然語言處理研究"
+        title_en:
+          type: string
+          description: 論文外文名稱
+        supervisor:
+          type: string
+          description: 指導教授-中文名（相容舊欄位）
+        supervisor_en:
+          type: string
+          description: 指導教授-外文名
+        supervisor_email:
+          type: string
+          format: email
+          description: 指導教授E-mail
+        co_supervisor:
+          type: string
+          description: 共同指導教授
+        oral_committee:
+          type: string
+          description: 口試委員（多人可為陣列或逗號分隔，依實作而定）
+        oral_committee_en:
+          type: string
+          description: 口試委員-外文名
+        oral_exam_date:
+          type: string
+          format: date
+          description: 口試日期
+        degree:
+          type: string
+          description: 學位類別
+          example: "碩士"
+        school:
+          type: string
+          description: 校院名稱
+          example: "國立臺灣大學"
+        department:
+          type: string
+          description: 系所名稱
+          example: "資訊工程學系"
+        year:
+          type: integer
+          description: 畢業學年度（民國）
+          example: 113
+        publication_year:
+          type: integer
+          description: 論文出版年（西元或民國，依實作）
+        student_id:
+          type: string
+          description: 學號
+          example: "M110123456"
+        language:
+          type: string
+          description: 語文別
+        pages:
+          type: integer
+          description: 論文頁數
+        keywords:
+          type: array
+          description: 中文關鍵詞
+          items:
+            type: string
+        keywords_en:
+          type: array
+          description: 外文關鍵詞
+          items:
+            type: string
+        abstract:
+          type: string
+          description: 論文中文摘要
+        abstract_en:
+          type: string
+          description: 論文外文摘要
+        table_of_contents:
+          type: string
+          description: 論文目次
+        references:
+          type: string
+          description: 論文參考文獻
+        full_text_open_time:
+          type: string
+          format: date-time
+          description: 全文開放時間
+        delayed_publication_date:
+          type: string
+          format: date
+          description: 延後公開日期
+        original_thesis_url:
+          type: string
+          format: uri
+          description: 原論文連結
+        discipline:
+          type: string
+          description: 學門
+        discipline_category:
+          type: string
+          description: 學類
+        full_text_file_id:
+          type: string
+          description: 電子全文檔案ID
+        alternative_thesis_file_id:
+          type: string
+          description: 替代論文檔案ID
+        authorization_letter_file_id:
+          type: string
+          description: 授權書檔案ID
+        campus_authorization:
+          type: boolean
+          description: 校內授權
+        ncl_authorization:
+          type: boolean
+          description: 國圖授權
+        database_vendor_authorization:
+          type: boolean
+          description: 資料庫廠商授權
+        cited_count:
+          type: integer
+          description: 被引用數
+        has_full_text:
+          type: boolean
+          description: 是否有電子全文可下載
+        has_multimedia:
+          type: boolean
+          description: 是否含多媒體作品
         status:
           type: string
+          description: 論文狀態（管理端）
           example: "公開"
         publishDate:
           type: string
           format: date
+          description: 公開/出版日期（管理端）
           example: "2024-04-22"
 
     # 審核相關 Schema
@@ -1721,6 +2169,25 @@ components:
         result_info:
           $ref: '#/components/schemas/PaginationInfo'
 
+    ThesisDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          $ref: '#/components/schemas/Thesis'
+
     ReviewListResponse:
       type: object
       properties:
@@ -1784,6 +2251,40 @@ components:
           items:
             $ref: '#/components/schemas/ReportRow'
 
+    ReportExportHistoryResponse:
+      type: object
+      description: 報表匯出紀錄（對應 A05-4 追蹤）
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              report_type:
+                type: string
+              exported_at:
+                type: string
+                format: date-time
+              download_url:
+                type: string
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
     SubmissionListResponse:
       type: object
       properties:
@@ -1825,6 +2326,69 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SubmissionHistory'
+
+    SubmissionOcrResponse:
+      type: object
+      description: OCR/封面辨識加入送存清單之回應
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: object
+          properties:
+            added_count:
+              type: integer
+            thesis_ids:
+              type: array
+              items:
+                type: string
+            recognized_fields:
+              type: object
+
+    ThesisImportResponse:
+      type: object
+      description: 論文批次匯入結果
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: object
+          properties:
+            imported_count:
+              type: integer
+            failed_count:
+              type: integer
+            errors:
+              type: array
+              items:
+                type: object
+                properties:
+                  row:
+                    type: integer
+                  message:
+                    type: string
 
     # 待辦事項相關 Schema
     TodoListResponse:
@@ -2278,6 +2842,125 @@ components:
             $ref: '#/components/schemas/RejectTemplate'
         result_info:
           $ref: '#/components/schemas/PaginationInfo'
+
+    RejectHistoryResponse:
+      type: object
+      description: 論文退件歷史紀錄（對應 R02-6 退件歷史紀錄）
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              rejected_at:
+                type: string
+                format: date-time
+              template_id:
+                type: string
+              reason:
+                type: string
+              reviewer:
+                type: string
+
+    Issue:
+      type: object
+      properties:
+        id:
+          type: string
+        subject:
+          type: string
+        content:
+          type: string
+        status:
+          type: string
+          enum: [待處理, 處理中, 已解決, 已關閉]
+        category:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    IssueListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/Issue'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    IssueCreate:
+      type: object
+      required: [subject, content]
+      properties:
+        subject:
+          type: string
+        content:
+          type: string
+        category:
+          type: string
+
+    IssueUpdate:
+      type: object
+      properties:
+        subject:
+          type: string
+        content:
+          type: string
+        status:
+          type: string
+          enum: [待處理, 處理中, 已解決, 已關閉]
+
+    IssueResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          $ref: '#/components/schemas/Issue'
 
     # 科系相關 Schema
     Department:

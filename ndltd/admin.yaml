@@ -2,8 +2,10 @@ openapi: 3.0.3
 info:
   title: 博碩士論文系統 國圖管理端
   description: |
-    國圖管理端 API，對應設計稿（ndltd/admin-figma）：M01 首頁、M02 人員權限管理（新增/編輯）、M03 學校帳號與系所管理、
-    M04 論文書目管理、M05 紙本論文送存作業（點收、書目檢核、書目審查）、M06 論文統計報表。
+    國圖管理端 API，對應設計稿（ndltd/admin-figma）：M01 首頁、M02 人員權限管理（M02-1 新增、M02-2 編輯）、
+    M03 學校帳號與系所管理（M03-1～M03-4 系所代碼/合併等）、M04 論文書目管理、M05 紙本論文送存作業（點收、書目檢核、書目審查）、
+    M06 論文統計報表（M06-1～M06-7 多欄位/報表類型/條件/呈現/匯出/追蹤）、M07 問題回報（M07-1～M07-3 未處理/已處理/我願授權）、
+    M08 最新消息/常見問答/關於本站（M08-1～M08-3）、SYS01 系統設定、SYS02 系統紀錄與 API token 管理。
   version: 1.0.0
   contact:
     name: Github 原始碼
@@ -81,7 +83,7 @@ paths:
     get:
       tags: [公告管理]
       summary: 取得公告清單
-      description: 取得所有公告之管理清單，可依分類、狀態、關鍵字篩選。
+      description: 取得所有公告之管理清單，可依分類、狀態、關鍵字篩選。對應設計稿 M08-1 最新消息。
       parameters:
         - name: page
           in: query
@@ -731,12 +733,1034 @@ paths:
               schema:
                 $ref: '#/components/schemas/ThesisSearchResponse'
 
+  # 紙本論文送存作業 API（M05：點收、書目檢核、書目審查）
+  /paper-deposits/summary:
+    get:
+      tags: [紙本送存]
+      summary: 取得點收摘要
+      description: 對應設計稿 M05、M05-1 紙本論文送存作業：點收。取得已寄出箱單數、點收中箱單數，供儀表板顯示。
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaperDepositSummaryResponse'
+
+  /paper-deposits/boxes:
+    get:
+      tags: [紙本送存]
+      summary: 取得箱單名冊
+      description: 對應設計稿 M05-1 箱單名冊。列出待點收或點收中的論文箱，含箱號、學校、論文類型數量、點收進度。
+      parameters:
+        - name: status
+          in: query
+          description: 箱單狀態
+          schema:
+            type: string
+            enum: [all, sent, in_receipt]
+            default: all
+        - name: school
+          in: query
+          description: 學校名稱篩選
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoxListResponse'
+
+  /paper-deposits/boxes/scan:
+    post:
+      tags: [紙本送存]
+      summary: 掃描或輸入箱號
+      description: 對應設計稿 M05、M05-1。掃描箱子外側箱貼條碼或輸入箱號，建立/取得學校送存清單以進行點收。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BoxScanRequest'
+      responses:
+        '200':
+          description: 成功，回傳箱單資訊
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoxDetailResponse'
+        '404':
+          description: 找不到該箱號
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/boxes/{boxId}:
+    get:
+      tags: [紙本送存]
+      summary: 取得單一箱單詳情
+      description: 取得指定箱單的詳細資訊（箱號、學校、論文類型數量、點收數量等）。
+      parameters:
+        - name: boxId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 箱單唯一識別碼
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BoxDetailResponse'
+        '404':
+          description: 找不到該箱單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/boxes/{boxId}/start-receipt:
+    post:
+      tags: [紙本送存]
+      summary: 開始點收
+      description: 對應設計稿 M05-1「點收論文」按鈕。開始對該箱進行點收作業。
+      parameters:
+        - name: boxId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功，進入點收流程
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到該箱單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/boxes/{boxId}/receipt-items:
+    get:
+      tags: [紙本送存]
+      summary: 取得點收論文清單
+      description: 對應設計稿 M05-1.1 點收論文清單。取得該箱內已點收/尚未點收的論文列表，分頁。
+      parameters:
+        - name: boxId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: status
+          in: query
+          description: 點收狀態
+          schema:
+            type: string
+            enum: [received, pending]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceiptItemListResponse'
+
+  /paper-deposits/boxes/{boxId}/receipt/scan:
+    post:
+      tags: [紙本送存]
+      summary: 掃描流水號點收
+      description: 對應設計稿 M05-1.1。掃描論文上的流水號，將該本論文標記為已點收。
+      parameters:
+        - name: boxId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReceiptScanRequest'
+      responses:
+        '200':
+          description: 點收成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceiptScanResponse'
+        '404':
+          description: 找不到該流水號論文
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/boxes/{boxId}/receipt/manual:
+    post:
+      tags: [紙本送存]
+      summary: 手動輸入論文點收
+      description: 對應設計稿 M05-1.2 批次點收：手動輸入論文。手動輸入論文資料並加入點收清單。
+      parameters:
+        - name: boxId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReceiptManualEntryRequest'
+      responses:
+        '201':
+          description: 新增成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceiptItemResponse'
+        '400':
+          description: 資料驗證失敗
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/boxes/{boxId}/receipt/ocr:
+    post:
+      tags: [紙本送存]
+      summary: OCR/封面辨識上傳點收
+      description: 對應設計稿 M05-1.3 批次點收：OCR上傳輸入。上傳封面圖片進行辨識並加入點收清單。
+      parameters:
+        - name: boxId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                  description: 封面圖片
+      responses:
+        '200':
+          description: 辨識成功並加入點收
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceiptOcrResponse'
+        '400':
+          description: 辨識失敗或檔案格式不符
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/receipt-items/{itemId}/mark-missing:
+    put:
+      tags: [紙本送存]
+      summary: 標記缺件
+      description: 對應設計稿 M05-1.1「標記缺件」。將該筆論文標記為缺件。
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 已標記為缺件
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到該筆
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/boxes/{boxId}/receipt/complete:
+    post:
+      tags: [紙本送存]
+      summary: 點收完成
+      description: 對應設計稿 M05-1.1「點收完成」按鈕。確認該箱點收作業完成。
+      parameters:
+        - name: boxId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 點收完成
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到該箱單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/boxes/{boxId}/to-cart:
+    post:
+      tags: [紙本送存]
+      summary: 點收完成上書車
+      description: 對應設計稿 M05-1.4、M05-1.5 點收完成上書車。將該箱已點收論文送上書車（可帶書車號或由系統分配）。
+      parameters:
+        - name: boxId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cart_number:
+                  type: string
+                  description: 書車編號（選填，不傳則由系統分配）
+      responses:
+        '200':
+          description: 已上書車
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartAssignmentResponse'
+        '404':
+          description: 找不到該箱單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/shelf:
+    get:
+      tags: [紙本送存]
+      summary: 取得架上論文清單
+      description: 對應設計稿 M05、M05-1 論文點收子標籤「架上論文」、M05-1.6 點收紙本論文：上書架。查詢已點收並上架的論文列表。
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: school
+          in: query
+          description: 學校篩選
+          schema:
+            type: string
+        - name: keyword
+          in: query
+          description: 關鍵字（標題、作者等）
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReceiptItemListResponse'
+
+  /paper-deposits/carts:
+    get:
+      tags: [紙本送存]
+      summary: 取得書車列表
+      description: 對應設計稿 M05-2 書目檢核（書車檢核作業）與 M05-3 書目審查（書車審查作業）。依 status 取得待編目或已編目之書車列表。
+      parameters:
+        - name: status
+          in: query
+          description: 書車狀態（檢核用 pending_catalog / 審查用 cataloged）
+          schema:
+            type: string
+            enum: [pending_catalog, cataloged]
+        - name: school
+          in: query
+          description: 學校名稱篩選
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookCartListResponse'
+
+  /paper-deposits/carts/{cartId}:
+    get:
+      tags: [紙本送存]
+      summary: 取得書車詳情
+      description: 對應設計稿 M05-2.1 編目清單頁上方摘要。取得書車（車號、點收人員、收書日期、學校、論文總數/博士/碩士、各類型數量）。
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 書車唯一識別碼（或書車編號）
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookCartDetailResponse'
+        '404':
+          description: 找不到該書車
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/carts/{cartId}/download:
+    get:
+      tags: [紙本送存]
+      summary: 下載書車單
+      description: 對應設計稿 M05-2 書車檢核作業「下載書車單」。下載該書車論文清單（如 CSV/Excel）。
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 檔案內容
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: 找不到該書車
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/carts/{cartId}/input-cart-number:
+    put:
+      tags: [紙本送存]
+      summary: 輸入書車號
+      description: 對應設計稿 M05-1.8 批次點收：輸入書車號。更新或綁定書車編號。
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [cart_number]
+              properties:
+                cart_number:
+                  type: string
+                  example: "A12323244"
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到該書車
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/carts/{cartId}/claim:
+    post:
+      tags: [紙本送存]
+      summary: 領上書車
+      description: 對應設計稿 M05-1.9 批次點收：領上書車。確認領取該書車。
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 領取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到該書車
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/carts/{cartId}/start-cataloging:
+    post:
+      tags: [紙本送存]
+      summary: 開始編目
+      description: 對應設計稿 M05-2 書車檢核作業「開始編目」。將該書車狀態更新為編目中。
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 已開始編目
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到該書車
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/carts/{cartId}/theses:
+    get:
+      tags: [紙本送存]
+      summary: 取得書車內論文列表
+      description: 對應設計稿 M05-2.1、M05-2.2 編目清單（未編目/已編目）。取得該書車內論文，可依編目狀態篩選。
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: cataloging_status
+          in: query
+          description: 編目狀態
+          schema:
+            type: string
+            enum: [uncatalogued, catalogued]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CartThesisListResponse'
+        '404':
+          description: 找不到該書車
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/carts/{cartId}/cataloging-complete:
+    put:
+      tags: [紙本送存]
+      summary: 編目完成
+      description: 對應設計稿 M05-2.1「編目完成」按鈕。將該書車整體標記為編目完成。
+      parameters:
+        - name: cartId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 編目完成
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到該書車
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/theses/by-serial/{serialNumber}:
+    get:
+      tags: [紙本送存]
+      summary: 依流水號查詢論文
+      description: 對應設計稿 M05-2.3 編目頁「掃描論文流水號」。依流水號取得論文資料供編目/審查使用。
+      parameters:
+        - name: serialNumber
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThesisCatalogDetailResponse'
+        '404':
+          description: 找不到該流水號
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/theses/{thesisId}/catalog:
+    get:
+      tags: [紙本送存]
+      summary: 取得單篇編目資料
+      description: 對應設計稿 M05-2.3、M05-2.4 書目檢核：編目/編目資料。取得學校端審查資料（基本資料、論文資料、論文檔案）供核對與修改。
+      parameters:
+        - name: thesisId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThesisCatalogDetailResponse'
+        '404':
+          description: 找不到該論文
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      tags: [紙本送存]
+      summary: 更新編目資料
+      description: 對應設計稿 M05-2.4 修改編目資料。更新基本資料或論文資料欄位。
+      parameters:
+        - name: thesisId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ThesisCatalogUpdateRequest'
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThesisCatalogDetailResponse'
+        '404':
+          description: 找不到該論文
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/theses/{thesisId}/catalog/field-verified:
+    put:
+      tags: [紙本送存]
+      summary: 欄位與紙本相符
+      description: 對應設計稿 M05-2.3「與紙本相符」按鈕。標記單一欄位已與紙本核對相符。
+      parameters:
+        - name: thesisId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: field_key
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 欄位鍵（如 basic_info.graduate_name_zh）
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                verified:
+                  type: boolean
+                  default: true
+      responses:
+        '200':
+          description: 已標記
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到該論文
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/theses/{thesisId}/catalog/complete:
+    post:
+      tags: [紙本送存]
+      summary: 完成編目
+      description: 對應設計稿 M05-2.3「完成編目」按鈕。提交該篇論文編目完成。
+      parameters:
+        - name: thesisId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 編目完成
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到該論文
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/theses/{thesisId}/call-number:
+    get:
+      tags: [紙本送存]
+      summary: 列印索書號
+      description: 對應設計稿 M05-2.3「列印索書號」。取得索書號列印用資料（如 PDF 或結構化資料）。
+      parameters:
+        - name: thesisId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功（可為 PDF 或 JSON）
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CallNumberResponse'
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: 找不到該論文
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/review-tasks:
+    get:
+      tags: [紙本送存]
+      summary: 取得審查任務列表
+      description: 對應設計稿 M05-3 書目審查：書車審查作業。取得已編目待審查的書車/任務列表。
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [cataloged, sampling, reviewed]
+        - name: school
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewTaskListResponse'
+
+  /paper-deposits/review-tasks/{taskId}:
+    get:
+      tags: [紙本送存]
+      summary: 取得審查任務詳情
+      description: 對應設計稿 M05-3.2 書目審查：審查清單。取得審查人員、審查日期、應抽查/已抽查/總本數、抽查百分比等。
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewTaskDetailResponse'
+        '404':
+          description: 找不到該任務
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/review-tasks/{taskId}/start-sampling:
+    post:
+      tags: [紙本送存]
+      summary: 開始抽查
+      description: 對應設計稿 M05-3.1 書目審查：抽查百分比。輸入抽查百分比後建立抽查清單。
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sampling_percentage]
+              properties:
+                sampling_percentage:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+                  description: 抽查百分比（1–100）
+                  example: 10
+      responses:
+        '200':
+          description: 已建立抽查清單
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewTaskDetailResponse'
+        '404':
+          description: 找不到該任務
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/review-tasks/{taskId}/theses:
+    get:
+      tags: [紙本送存]
+      summary: 取得審查清單論文
+      description: 對應設計稿 M05-3.2 審查清單。取得該審查任務內待審查/已審查的論文列表。
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: review_result
+          in: query
+          description: 審查結果篩選
+          schema:
+            type: string
+            enum: [passed, failed, pending]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewThesisListResponse'
+        '404':
+          description: 找不到該任務
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/review-theses/{thesisId}/result:
+    put:
+      tags: [紙本送存]
+      summary: 更新單篇審查結果
+      description: 對應設計稿 M05-3.2、M05-3.3「重新審查」。設定單篇論文的審查結果（通過/不通過）。
+      parameters:
+        - name: thesisId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [result]
+              properties:
+                result:
+                  type: string
+                  enum: [passed, failed]
+                  description: 審查通過 / 審查不通過
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到該論文
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/review-tasks/{taskId}/approve:
+    post:
+      tags: [紙本送存]
+      summary: 審查通過
+      description: 對應設計稿 M05-3.2「審查通過」按鈕。整批審查任務通過。
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 審查通過
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到該任務
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /paper-deposits/review-tasks/{taskId}/reject:
+    post:
+      tags: [紙本送存]
+      summary: 審查不通過
+      description: 對應設計稿 M05-3.2「審查不通過」按鈕。整批審查任務不通過，可帶備註。
+      parameters:
+        - name: taskId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                comment:
+                  type: string
+                  description: 不通過原因或備註
+      responses:
+        '200':
+          description: 審查不通過
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到該任務
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   # 問題回報管理 API
   /issues:
     get:
       tags: [問題回報管理]
       summary: 取得問題回報清單
-      description: 取得所有問題回報的管理清單
+      description: 取得所有問題回報的管理清單，對應設計稿 M07-1 未處理、M07-2 已處理、M07-3 我願授權（可依 category 篩選）。
       parameters:
         - name: page
           in: query
@@ -752,16 +1776,16 @@ paths:
             default: 20
         - name: source
           in: query
-          description: 問題來源篩選
+          description: 問題來源篩選（學校端/讀者端）
           schema:
             type: string
             enum: [學生, 學校]
         - name: category
           in: query
-          description: 問題分類篩選
+          description: 問題分類篩選（含「我願授權」對應 M07-3）
           schema:
             type: string
-            enum: [系統問題, 操作問題, 帳號問題, 論文問題, 其他]
+            enum: [系統問題, 操作問題, 帳號問題, 論文問題, 我願授權, 其他]
         - name: status
           in: query
           description: 問題狀態篩選
@@ -886,6 +1910,126 @@ paths:
                 $ref: '#/components/schemas/SuccessResponse'
         '404':
           description: 找不到指定的問題回報
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # 問題回報回覆樣本 API（對應 M07-3 回覆樣本設定）
+  /issue-reply-templates:
+    get:
+      tags: [問題回報管理]
+      summary: 取得回覆樣本清單
+      description: 對應設計稿 M07-3 問題回報：我願授權之「回覆樣本設定」。取得問題回報用回覆樣本清單。
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: keyword
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueReplyTemplateListResponse'
+    post:
+      tags: [問題回報管理]
+      summary: 新增回覆樣本
+      description: 對應設計稿 M07-3 回覆樣本設定。新增一筆回覆樣本。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueReplyTemplateCreate'
+      responses:
+        '201':
+          description: 成功新增
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueReplyTemplateResponse'
+
+  /issue-reply-templates/{id}:
+    get:
+      tags: [問題回報管理]
+      summary: 取得單一回覆樣本
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueReplyTemplateResponse'
+        '404':
+          description: 找不到該樣本
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [問題回報管理]
+      summary: 更新回覆樣本
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueReplyTemplateUpdate'
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IssueReplyTemplateResponse'
+        '404':
+          description: 找不到該樣本
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [問題回報管理]
+      summary: 刪除回覆樣本
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功刪除
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: 找不到該樣本
           content:
             application/json:
               schema:
@@ -1204,7 +2348,7 @@ paths:
     get:
       tags: [常見問答管理]
       summary: 取得常見問答清單
-      description: 取得所有常見問答的管理清單
+      description: 取得所有常見問答的管理清單，對應設計稿 M08-2 常見問答。
       parameters:
         - name: page
           in: query
@@ -1352,7 +2496,7 @@ paths:
     get:
       tags: [內容管理]
       summary: 取得內容清單
-      description: 取得所有內容文章的管理清單
+      description: 取得所有內容文章的管理清單，對應設計稿 M08-3 關於本站。
       parameters:
         - name: page
           in: query
@@ -1506,7 +2650,7 @@ paths:
     get:
       tags: [系統設定管理]
       summary: 取得系統設定清單
-      description: 取得所有系統設定的管理清單
+      description: 取得所有系統設定的管理清單，對應設計稿 SYS01 系統設定、SYS02 系統紀錄。
       parameters:
         - name: page
           in: query
@@ -1648,7 +2792,7 @@ paths:
     get:
       tags: [API設定管理]
       summary: 取得 API 設定清單
-      description: 取得所有 API 金鑰和訪問設定的管理清單
+      description: 取得所有 API 金鑰和訪問設定的管理清單，對應設計稿 SYS02 系統紀錄：API token 管理。
       parameters:
         - name: page
           in: query
@@ -1797,12 +2941,128 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
- 
+  # 論文統計報表 API（M06：報表類型、條件、預覽、匯出、追蹤）
+  /reports/types:
+    get:
+      tags: [論文統計報表]
+      summary: 取得報表類型清單
+      description: 對應設計稿 M06-3 選擇報表類型。取得可產生的報表類型（如授權率/送存率、工作項目、指導教授、論文報表查詢、機構典藏等）。
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportTypeListResponse'
+
+  /reports/preview:
+    post:
+      tags: [論文統計報表]
+      summary: 產生報表預覽
+      description: 對應設計稿 M06-4 輸入報表條件、M06-5 瀏覽資料呈現。依報表類型與條件產生預覽資料。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportPreviewRequest'
+      responses:
+        '200':
+          description: 成功，回傳預覽資料
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportPreviewResponse'
+    delete:
+      tags: [論文統計報表]
+      summary: 刪除預覽資料
+      description: 對應設計稿 M06-5 資料預覽區「刪除資料」。刪除已選取之預覽資料或清空預覽。
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ids:
+                  type: array
+                  items:
+                    type: string
+                  description: 欲刪除之預覽列 ID，不傳則清空全部
+      responses:
+        '200':
+          description: 刪除成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /reports/export:
+    post:
+      tags: [論文統計報表]
+      summary: 匯出報表檔案
+      description: 對應設計稿 M06-6 匯出報表檔案。依目前預覽或條件匯出為檔案（如 CSV/Excel）。
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                report_type:
+                  type: string
+                format:
+                  type: string
+                  enum: [csv, xlsx]
+                  default: xlsx
+                preview_ids:
+                  type: array
+                  items:
+                    type: string
+                  description: 指定預覽列 ID，不傳則匯出目前條件下全部
+      responses:
+        '200':
+          description: 成功，回傳檔案或下載連結
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportExportResponse'
+
+  /reports/export-history:
+    get:
+      tags: [論文統計報表]
+      summary: 取得匯出紀錄
+      description: 對應設計稿 M06-7 追蹤完成行動、M06-5 查看匯出紀錄。取得報表匯出歷史清單。
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: report_type
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReportExportHistoryResponse'
+
   /statistics:
     get:
       tags: [靜態資料]
       summary: 取得論文統計資料
-      description: 取得論文或 API 相關之統計資料，對應設計稿 M06 論文統計報表。
+      description: 取得論文或 API 相關之統計資料，對應設計稿 M06 論文統計報表（API 使用統計等）。
       parameters:
         - name: api_key_id
           in: query
@@ -2398,74 +3658,175 @@ components:
         result_info:
           $ref: '#/components/schemas/PaginationInfo'
 
-    # 論文管理相關 Schema
+    # 論文管理相關 Schema（與 ndltd/reader.yaml ThesisDetail 欄位一致，另加管理端欄位）
     Thesis:
       type: object
+      description: 論文書目與詳情（管理端含 status、created_at、updated_at）
       properties:
         id:
           type: string
           description: 論文唯一識別碼
           example: "1"
-        title:
+        thesis_number:
           type: string
-          description: 論文標題
-          example: "台灣博碩士論文網發展現況與展望"
+          description: 論文編號
+          example: "108NTNU1234567"
+        thesis_type:
+          type: string
+          description: 論文種類（如學術論文、技術報告、作品連同書面報告等）
+          example: "學術論文"
         author:
           type: string
-          description: 作者
+          description: 研究生中文名（相容舊欄位）
           example: "王小明"
+        author_en:
+          type: string
+          description: 研究生外文名
+          example: "WANG, SIAO-MING"
+        title:
+          type: string
+          description: 論文中文名稱
+          example: "台灣博碩士論文網發展現況與展望"
+        title_en:
+          type: string
+          description: 論文外文名稱
+          example: "Development and Prospects of Taiwan ETDS"
+        supervisor:
+          type: string
+          description: 指導教授-中文名（相容舊欄位）
+          example: "李大華博士"
+        supervisor_en:
+          type: string
+          description: 指導教授-外文名
+          example: "LEE, DA-HWA"
+        supervisor_email:
+          type: string
+          format: email
+          description: 指導教授E-mail
+        co_supervisor:
+          type: string
+          description: 共同指導教授
+        oral_committee:
+          type: string
+          description: 口試委員（多人可為陣列或逗號分隔，依實作而定）
+        oral_committee_en:
+          type: string
+          description: 口試委員-外文名
+        oral_exam_date:
+          type: string
+          format: date
+          description: 口試日期
+          example: "2024-06-15"
+        degree:
+          type: string
+          description: 學位類別
+          example: "碩士"
         school:
           type: string
-          description: 學校名稱
+          description: 校院名稱
           example: "國立臺灣大學"
         department:
           type: string
           description: 系所名稱
           example: "資訊工程學系"
-        degree:
-          type: string
-          description: 學位
-          enum: [碩士, 博士, 其他]
-          example: "碩士"
         year:
           type: integer
-          description: 年度
+          description: 畢業學年度（民國）
           example: 113
-        abstract:
+        publication_year:
+          type: integer
+          description: 論文出版年（西元或民國，依實作）
+          example: 2024
+        student_id:
           type: string
-          description: 論文摘要
-          example: "本論文探討台灣博碩士論文網的發展現況..."
+          description: 學號
+          example: "M110123456"
+        language:
+          type: string
+          description: 語文別
+          example: "中文"
+        pages:
+          type: integer
+          description: 論文頁數
+          example: 156
         keywords:
           type: array
+          description: 中文關鍵詞
           items:
             type: string
-          description: 關鍵字
           example: ["論文網", "台灣", "Open Access"]
-        advisor:
+        keywords_en:
+          type: array
+          description: 外文關鍵詞
+          items:
+            type: string
+        abstract:
           type: string
-          description: 指導教授
-          example: "李教授"
+          description: 論文中文摘要
+          example: "本論文探討台灣博碩士論文網的發展現況..."
+        abstract_en:
+          type: string
+          description: 論文外文摘要
+        table_of_contents:
+          type: string
+          description: 論文目次
+        references:
+          type: string
+          description: 論文參考文獻
+        full_text_open_time:
+          type: string
+          format: date-time
+          description: 全文開放時間
+        delayed_publication_date:
+          type: string
+          format: date
+          description: 延後公開日期
+        original_thesis_url:
+          type: string
+          format: uri
+          description: 原論文連結
+        discipline:
+          type: string
+          description: 學門
+          example: "電算機學門"
+        discipline_category:
+          type: string
+          description: 學類
+        full_text_file_id:
+          type: string
+          description: 電子全文檔案ID
+        alternative_thesis_file_id:
+          type: string
+          description: 替代論文檔案ID
+        authorization_letter_file_id:
+          type: string
+          description: 授權書檔案ID
+        campus_authorization:
+          type: boolean
+          description: 校內授權
+        ncl_authorization:
+          type: boolean
+          description: 國圖授權
+        database_vendor_authorization:
+          type: boolean
+          description: 資料庫廠商授權
+        cited_count:
+          type: integer
+          description: 被引用數
+          example: 12
+        has_full_text:
+          type: boolean
+          description: 是否有電子全文可下載
+          example: true
+        has_multimedia:
+          type: boolean
+          description: 是否含多媒體作品
+          example: false
         status:
           type: string
-          description: 論文狀態
+          description: 論文狀態（管理端）
           enum: [審核中, 已通過, 已拒絕, 已發布]
           example: "已發布"
-        full_text_available:
-          type: boolean
-          description: 是否有全文
-          example: true
-        download_url:
-          type: string
-          description: 下載連結
-          example: "https://ndltd.ncl.edu.tw/download/1"
-        view_count:
-          type: integer
-          description: 瀏覽次數
-          example: 1250
-        download_count:
-          type: integer
-          description: 下載次數
-          example: 89
         created_at:
           type: string
           format: date-time
@@ -2516,17 +3877,18 @@ components:
             type: string
           description: 關鍵字
           example: ["論文網", "台灣", "Open Access"]
-        advisor:
+        supervisor:
           type: string
-          description: 指導教授
-          example: "李教授"
-        full_text_available:
+          description: 指導教授-中文名
+          example: "李大華博士"
+        has_full_text:
           type: boolean
-          description: 是否有全文
+          description: 是否有電子全文可下載
           example: true
-        download_url:
+        original_thesis_url:
           type: string
-          description: 下載連結
+          format: uri
+          description: 原論文連結
           example: "https://ndltd.ncl.edu.tw/download/1"
 
     ThesisUpdate:
@@ -2567,22 +3929,23 @@ components:
             type: string
           description: 關鍵字
           example: ["論文網", "台灣", "Open Access"]
-        advisor:
+        supervisor:
           type: string
-          description: 指導教授
-          example: "李教授"
+          description: 指導教授-中文名
+          example: "李大華博士"
         status:
           type: string
           description: 論文狀態
           enum: [審核中, 已通過, 已拒絕, 已發布]
           example: "已發布"
-        full_text_available:
+        has_full_text:
           type: boolean
-          description: 是否有全文
+          description: 是否有電子全文可下載
           example: true
-        download_url:
+        original_thesis_url:
           type: string
-          description: 下載連結
+          format: uri
+          description: 原論文連結
           example: "https://ndltd.ncl.edu.tw/download/1"
 
     ThesisResponse:
@@ -2690,8 +4053,8 @@ components:
           example: "論文上傳時出現錯誤，無法完成檔案上傳"
         category:
           type: string
-          description: 問題分類
-          enum: [系統問題, 操作問題, 帳號問題, 論文問題, 其他]
+          description: 問題分類（含我願授權）
+          enum: [系統問題, 操作問題, 帳號問題, 論文問題, 我願授權, 其他]
           example: "系統問題"
         priority:
           type: string
@@ -2771,8 +4134,8 @@ components:
           example: "論文上傳時出現錯誤，無法完成檔案上傳"
         category:
           type: string
-          description: 問題分類
-          enum: [系統問題, 操作問題, 帳號問題, 論文問題, 其他]
+          description: 問題分類（含我願授權，對應 M07-3）
+          enum: [系統問題, 操作問題, 帳號問題, 論文問題, 我願授權, 其他]
           example: "系統問題"
         priority:
           type: string
@@ -2790,7 +4153,7 @@ components:
         category:
           type: string
           description: 問題分類
-          enum: [系統問題, 操作問題, 帳號問題, 論文問題, 其他]
+          enum: [系統問題, 操作問題, 帳號問題, 論文問題, 我願授權, 其他]
           example: "系統問題"
         priority:
           type: string
@@ -2856,6 +4219,91 @@ components:
             $ref: '#/components/schemas/Issue'
         result_info:
           $ref: '#/components/schemas/PaginationInfo'
+
+    # 問題回報回覆樣本 Schema（M07-3 回覆樣本設定）
+    IssueReplyTemplate:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+          description: 樣本名稱
+        content:
+          type: string
+          description: 回覆內容範本
+        category:
+          type: string
+          description: 適用問題分類（選填）
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    IssueReplyTemplateListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/IssueReplyTemplate'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    IssueReplyTemplateCreate:
+      type: object
+      required: [name, content]
+      properties:
+        name:
+          type: string
+        content:
+          type: string
+        category:
+          type: string
+
+    IssueReplyTemplateUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        content:
+          type: string
+        category:
+          type: string
+
+    IssueReplyTemplateResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          $ref: '#/components/schemas/IssueReplyTemplate'
 
     # 學校管理相關 Schema
     School:
@@ -4073,6 +5521,161 @@ components:
               items:
                 $ref: '#/components/schemas/ApiStatistics'
 
+    # M06 論文統計報表 Schema
+    ReportTypeListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+                description: 報表類型名稱（如授權率/送存率、工作項目、指導教授、論文報表查詢、機構典藏）
+              filter_schema:
+                type: object
+                description: 該類型可用的篩選欄位定義
+
+    ReportPreviewRequest:
+      type: object
+      required: [report_type]
+      properties:
+        report_type:
+          type: string
+          description: 報表類型 ID
+        item_content:
+          type: string
+          description: 選擇項目內容（如集中式上傳電子全文）
+        year:
+          type: integer
+          description: 西元年
+        month:
+          type: integer
+          description: 月份（選填，不限則不傳）
+        date_from:
+          type: string
+          format: date
+          description: 日期區間起
+        date_to:
+          type: string
+          format: date
+          description: 日期區間迄
+
+    ReportPreviewResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: object
+          properties:
+            preview_id:
+              type: string
+            columns:
+              type: array
+              items:
+                type: object
+                properties:
+                  key:
+                    type: string
+                  label:
+                    type: string
+            rows:
+              type: array
+              items:
+                type: object
+                additionalProperties: true
+
+    ReportExportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: object
+          properties:
+            download_url:
+              type: string
+              description: 檔案下載連結（若為非串流回應）
+            export_id:
+              type: string
+            expires_at:
+              type: string
+              format: date-time
+
+    ReportExportHistoryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            type: object
+            properties:
+              export_id:
+                type: string
+              report_type:
+                type: string
+              format:
+                type: string
+              created_at:
+                type: string
+                format: date-time
+              download_url:
+                type: string
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
     # 通用回應 Schema
     SuccessResponse:
       type: object
@@ -4122,6 +5725,720 @@ components:
         result:
           type: object
           example: null
+
+    # 紙本送存 M05 相關 Schema
+    PaperDepositSummaryResponse:
+      type: object
+      description: 點收摘要（已寄出箱單、點收中箱單數）
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: object
+          properties:
+            sent_boxes_count:
+              type: integer
+              description: 已寄出箱單數量
+              example: 31
+            in_receipt_boxes_count:
+              type: integer
+              description: 點收中箱單數量
+              example: 21
+
+    BoxScanRequest:
+      type: object
+      required: [box_number]
+      properties:
+        box_number:
+          type: string
+          description: 掃描或輸入的箱貼條碼/箱號
+          example: "20251002"
+
+    BoxListItem:
+      type: object
+      properties:
+        box_id:
+          type: string
+          description: 箱單唯一識別碼
+        box_number:
+          type: string
+          description: 箱號
+          example: "20251002"
+        school_name:
+          type: string
+          description: 送存學校名稱
+          example: "台灣大學"
+        thesis_counts:
+          type: object
+          properties:
+            general:
+              type: integer
+              description: 一般論文
+              example: 201
+            work_with_report:
+              type: integer
+              description: 作品連同書面報告
+              example: 0
+            transcript_with_report:
+              type: integer
+              description: 成績證明連同書面報告
+              example: 0
+            technical_report:
+              type: integer
+              description: 技術報告
+              example: 0
+            business_practical_report:
+              type: integer
+              description: 事業實務報告
+              example: 0
+        received_count:
+          type: integer
+          description: 已點收數量
+          example: 0
+        total_count:
+          type: integer
+          description: 該箱論文總數
+          example: 201
+        receipt_status:
+          type: string
+          enum: [not_started, in_progress, completed]
+          description: 點收狀態
+        action_label:
+          type: string
+          description: 操作按鈕文案（點收論文/繼續點收）
+          example: "點收論文"
+
+    BoxListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/BoxListItem'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    BoxDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          $ref: '#/components/schemas/BoxListItem'
+
+    ReceiptItem:
+      type: object
+      description: 點收清單單筆（論文摘要）
+      properties:
+        item_id:
+          type: string
+        thesis_id:
+          type: string
+        school_name:
+          type: string
+        degree:
+          type: string
+          enum: [碩士, 博士]
+        graduation_year:
+          type: integer
+          description: 畢業學年度（民國）
+        department:
+          type: string
+        author_name:
+          type: string
+        student_id:
+          type: string
+        thesis_title:
+          type: string
+        thesis_type:
+          type: string
+          description: 一般論文、作品連同書面報告等
+        publication_method:
+          type: string
+          enum: [立即公開, 延後公開]
+        receipt_status:
+          type: string
+          enum: [pending, received, missing]
+
+    ReceiptItemListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReceiptItem'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    ReceiptScanRequest:
+      type: object
+      required: [serial_number]
+      properties:
+        serial_number:
+          type: string
+          description: 論文流水號（掃描或手動輸入）
+          example: "108381020"
+
+    ReceiptScanResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: object
+          properties:
+            item_id:
+              type: string
+            thesis_id:
+              type: string
+            thesis_title:
+              type: string
+            receipt_status:
+              type: string
+              example: "received"
+
+    ReceiptManualEntryRequest:
+      type: object
+      description: 手動輸入論文點收資料
+      properties:
+        school_name:
+          type: string
+        degree:
+          type: string
+          enum: [碩士, 博士]
+        graduation_year:
+          type: integer
+        department:
+          type: string
+        author_name:
+          type: string
+        student_id:
+          type: string
+        thesis_title:
+          type: string
+        thesis_type:
+          type: string
+        publication_method:
+          type: string
+          enum: [立即公開, 延後公開]
+        serial_number:
+          type: string
+
+    ReceiptItemResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          $ref: '#/components/schemas/ReceiptItem'
+
+    ReceiptOcrResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: object
+          properties:
+            item_id:
+              type: string
+            thesis_id:
+              type: string
+            thesis_title:
+              type: string
+            recognized_fields:
+              type: object
+              description: 辨識出的欄位
+
+    CartAssignmentResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: object
+          properties:
+            cart_id:
+              type: string
+            cart_number:
+              type: string
+              example: "A12323244"
+            box_id:
+              type: string
+
+    BookCartListItem:
+      type: object
+      properties:
+        cart_id:
+          type: string
+        cart_number:
+          type: string
+          example: "A12323244"
+        status:
+          type: string
+          enum: [pending_catalog, in_cataloging, cataloged]
+          description: 待編目 / 編目中 / 已編目
+        school_names:
+          type: array
+          items:
+            type: string
+          description: 學校名稱（可多校）
+        created_at:
+          type: string
+          format: date
+          example: "2024-11-21"
+        total_theses:
+          type: integer
+          example: 114
+        receiver_name:
+          type: string
+          description: 點收人員
+          example: "王小華"
+        cataloged_count:
+          type: integer
+        total_to_catalog:
+          type: integer
+
+    BookCartListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookCartListItem'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    BookCartDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: object
+          properties:
+            cart_id:
+              type: string
+            cart_number:
+              type: string
+            receiver_name:
+              type: string
+            receipt_date:
+              type: string
+              description: 收書日期（民國或 ISO 日期）
+              example: "112.09.25"
+            school_name:
+              type: string
+            total_theses:
+              type: integer
+            doctoral_count:
+              type: integer
+            master_count:
+              type: integer
+            thesis_type_counts:
+              type: object
+              properties:
+                general:
+                  type: integer
+                work_with_report:
+                  type: integer
+                transcript_with_report:
+                  type: integer
+                technical_report:
+                  type: integer
+                business_practical_report:
+                  type: integer
+
+    CartThesisListItem:
+      type: object
+      properties:
+        thesis_id:
+          type: string
+        school_name:
+          type: string
+        degree:
+          type: string
+        graduation_year:
+          type: integer
+        department:
+          type: string
+        author_name:
+          type: string
+        student_id:
+          type: string
+        thesis_title:
+          type: string
+        thesis_type:
+          type: string
+        publication_method:
+          type: string
+        cataloging_status:
+          type: string
+          enum: [uncatalogued, catalogued]
+
+    CartThesisListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartThesisListItem'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    ThesisCatalogDetailResponse:
+      type: object
+      description: 單篇編目/學校端審查資料（基本資料、論文資料、論文檔案）
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: object
+          properties:
+            thesis_id:
+              type: string
+            serial_number:
+              type: string
+            basic_info:
+              type: object
+              description: 研究生、指導教授、校院系所、畢業學年度等
+              additionalProperties: true
+            thesis_info:
+              type: object
+              description: 論文種類、中英文名稱、出版年、語文、頁數、關鍵詞等
+              additionalProperties: true
+            files:
+              type: object
+              description: 論文電子檔、授權同意書、多媒體檔案
+              properties:
+                electronic:
+                  type: object
+                  properties:
+                    file_name:
+                      type: string
+                    url:
+                      type: string
+                agreement:
+                  type: object
+                multimedia:
+                  type: object
+            field_verified:
+              type: object
+              description: 各欄位與紙本相符狀態
+              additionalProperties:
+                type: boolean
+
+    ThesisCatalogUpdateRequest:
+      type: object
+      description: 更新編目資料（可部分欄位）
+      additionalProperties: true
+
+    CallNumberResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: object
+          properties:
+            thesis_id:
+              type: string
+            call_number:
+              type: string
+              description: 索書號
+              example: "008.8 8765 113"
+
+    ReviewTaskListItem:
+      type: object
+      properties:
+        task_id:
+          type: string
+        cart_id:
+          type: string
+        cart_number:
+          type: string
+        status:
+          type: string
+          enum: [cataloged, sampling, reviewed]
+        school_names:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+        total_theses:
+          type: integer
+        receiver_name:
+          type: string
+
+    ReviewTaskListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewTaskListItem'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
+
+    ReviewTaskDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: object
+          properties:
+            task_id:
+              type: string
+            reviewer_name:
+              type: string
+              example: "李曉明"
+            review_date:
+              type: string
+              example: "112.09.25"
+            to_review_count:
+              type: integer
+              description: 應抽查本數
+              example: 12
+            reviewed_count:
+              type: integer
+              description: 目前已抽查本數
+              example: 2
+            total_theses:
+              type: integer
+              description: 總本數
+              example: 228
+            sampling_percentage:
+              type: integer
+              description: 抽查百分比
+              example: 4
+
+    ReviewThesisListItem:
+      type: object
+      properties:
+        thesis_id:
+          type: string
+        school_name:
+          type: string
+        degree:
+          type: string
+        graduation_year:
+          type: integer
+        department:
+          type: string
+        author_name:
+          type: string
+        student_id:
+          type: string
+        thesis_title:
+          type: string
+        thesis_type:
+          type: string
+        publication_method:
+          type: string
+        review_result:
+          type: string
+          enum: [passed, failed, pending]
+          description: 審查通過 / 審查不通過 / 待審查
+
+    ReviewThesisListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        errors:
+          type: array
+          items:
+            type: object
+          example: []
+        messages:
+          type: array
+          items:
+            type: object
+          example: []
+        result:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewThesisListItem'
+        result_info:
+          $ref: '#/components/schemas/PaginationInfo'
 
     # 分頁資訊 Schema
     PaginationInfo:

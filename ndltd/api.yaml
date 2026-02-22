@@ -134,62 +134,170 @@ components:
       bearerFormat: JWT
 
   schemas:
-    # 論文相關 Schema
+    # 論文相關 Schema（與 ndltd/reader.yaml ThesisDetail 欄位一致）
     ThesisDetail:
       type: object
+      description: 論文書目與詳情（對應檢索結果列、論文詳情頁、書車列表）
       properties:
         id:
           type: string
+          description: 論文唯一識別碼
           example: "1"
-        title:
+        thesis_number:
           type: string
-          example: "台灣博碩士論文網發展現況與展望"
+          description: 論文編號
+          example: "108NTNU1234567"
+        thesis_type:
+          type: string
+          description: 論文種類（如學術論文、技術報告、作品連同書面報告等）
+          example: "學術論文"
         author:
           type: string
+          description: 研究生中文名（相容舊欄位）
           example: "王小明"
+        author_en:
+          type: string
+          description: 研究生外文名
+          example: "WANG, SIAO-MING"
+        title:
+          type: string
+          description: 論文中文名稱
+          example: "台灣博碩士論文網發展現況與展望"
+        title_en:
+          type: string
+          description: 論文外文名稱
+          example: "Development and Prospects of Taiwan ETDS"
+        supervisor:
+          type: string
+          description: 指導教授-中文名（相容舊欄位）
+          example: "李大華博士"
+        supervisor_en:
+          type: string
+          description: 指導教授-外文名
+          example: "LEE, DA-HWA"
+        supervisor_email:
+          type: string
+          format: email
+          description: 指導教授E-mail
+        co_supervisor:
+          type: string
+          description: 共同指導教授
+        oral_committee:
+          type: string
+          description: 口試委員（多人可為陣列或逗號分隔，依實作而定）
+        oral_committee_en:
+          type: string
+          description: 口試委員-外文名
+        oral_exam_date:
+          type: string
+          format: date
+          description: 口試日期
+          example: "2024-06-15"
+        degree:
+          type: string
+          description: 學位類別
+          example: "碩士"
         school:
           type: string
+          description: 校院名稱
           example: "國立臺灣大學"
         department:
           type: string
+          description: 系所名稱
           example: "資訊工程學系"
-        degree:
-          type: string
-          example: "碩士"
         year:
           type: integer
+          description: 畢業學年度（民國）
           example: 113
-        abstract:
+        publication_year:
+          type: integer
+          description: 論文出版年（西元或民國，依實作）
+          example: 2024
+        student_id:
           type: string
-          example: "本論文探討台灣博碩士論文網的發展現況..."
+          description: 學號
+          example: "M110123456"
+        language:
+          type: string
+          description: 語文別
+          example: "中文"
+        pages:
+          type: integer
+          description: 論文頁數
+          example: 156
         keywords:
           type: array
+          description: 中文關鍵詞
           items:
             type: string
           example: ["論文網", "台灣", "Open Access"]
-        advisor:
+        keywords_en:
+          type: array
+          description: 外文關鍵詞
+          items:
+            type: string
+        abstract:
           type: string
-          example: "李教授"
-        fullTextAvailable:
+          description: 論文中文摘要
+          example: "本論文探討台灣博碩士論文網的發展現況..."
+        abstract_en:
+          type: string
+          description: 論文外文摘要
+        table_of_contents:
+          type: string
+          description: 論文目次
+        references:
+          type: string
+          description: 論文參考文獻
+        full_text_open_time:
+          type: string
+          format: date-time
+          description: 全文開放時間
+        delayed_publication_date:
+          type: string
+          format: date
+          description: 延後公開日期
+        original_thesis_url:
+          type: string
+          format: uri
+          description: 原論文連結
+        discipline:
+          type: string
+          description: 學門
+          example: "電算機學門"
+        discipline_category:
+          type: string
+          description: 學類
+        full_text_file_id:
+          type: string
+          description: 電子全文檔案ID
+        alternative_thesis_file_id:
+          type: string
+          description: 替代論文檔案ID
+        authorization_letter_file_id:
+          type: string
+          description: 授權書檔案ID
+        campus_authorization:
           type: boolean
+          description: 校內授權
+        ncl_authorization:
+          type: boolean
+          description: 國圖授權
+        database_vendor_authorization:
+          type: boolean
+          description: 資料庫廠商授權
+        cited_count:
+          type: integer
+          description: 被引用數
+          example: 12
+        has_full_text:
+          type: boolean
+          description: 是否有電子全文可下載
           example: true
-        downloadUrl:
-          type: string
-          example: "https://ndltd.ncl.edu.tw/download/1"
-        viewCount:
-          type: integer
-          example: 1250
-        downloadCount:
-          type: integer
-          example: 89
-        createdAt:
-          type: string
-          format: date-time
-          example: "2024-01-15T10:30:00Z"
-        updatedAt:
-          type: string
-          format: date-time
-          example: "2024-01-20T15:45:00Z"
+        has_multimedia:
+          type: boolean
+          description: 是否含多媒體作品
+          example: false
 
     ThesisCreateRequest:
       type: object
@@ -221,14 +329,18 @@ components:
           items:
             type: string
           example: ["論文網", "台灣", "Open Access"]
-        advisor:
+        supervisor:
           type: string
-          example: "李教授"
-        fullTextAvailable:
+          description: 指導教授-中文名
+          example: "李大華博士"
+        has_full_text:
           type: boolean
+          description: 是否有電子全文可下載
           example: true
-        downloadUrl:
+        original_thesis_url:
           type: string
+          format: uri
+          description: 原論文連結
           example: "https://ndltd.ncl.edu.tw/download/1"
 
     ThesisUpdateRequest:
@@ -261,14 +373,18 @@ components:
           items:
             type: string
           example: ["論文網", "台灣", "Open Access"]
-        advisor:
+        supervisor:
           type: string
-          example: "李教授"
-        fullTextAvailable:
+          description: 指導教授-中文名
+          example: "李大華博士"
+        has_full_text:
           type: boolean
+          description: 是否有電子全文可下載
           example: true
-        downloadUrl:
+        original_thesis_url:
           type: string
+          format: uri
+          description: 原論文連結
           example: "https://ndltd.ncl.edu.tw/download/1"
 
     ThesisPatchRequest:
@@ -300,14 +416,18 @@ components:
           items:
             type: string
           example: ["論文網", "台灣", "Open Access"]
-        advisor:
+        supervisor:
           type: string
-          example: "李教授"
-        fullTextAvailable:
+          description: 指導教授-中文名
+          example: "李大華博士"
+        has_full_text:
           type: boolean
+          description: 是否有電子全文可下載
           example: true
-        downloadUrl:
+        original_thesis_url:
           type: string
+          format: uri
+          description: 原論文連結
           example: "https://ndltd.ncl.edu.tw/download/1"
 
     ThesisResponse:
